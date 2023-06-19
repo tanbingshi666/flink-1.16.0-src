@@ -55,11 +55,14 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
         checkNotNull(inputType);
         checkNotNull(context);
 
+        // 获取 StreamNode
         final StreamGraph streamGraph = context.getStreamGraph();
         final String slotSharingGroup = context.getSlotSharingGroup();
+        // 获取算子的 ID (程序算子 ID 自增)
         final int transformationId = transformation.getId();
         final ExecutionConfig executionConfig = streamGraph.getExecutionConfig();
 
+        // StreamGraph 添加算子对应的 StreamNode
         streamGraph.addOperator(
                 transformationId,
                 slotSharingGroup,
@@ -88,6 +91,7 @@ abstract class AbstractOneInputTransformationTranslator<IN, OUT, OP extends Tran
                         + parentTransformations.size());
 
         for (Integer inputId : context.getStreamNodeIds(parentTransformations.get(0))) {
+            // 当前算子对应的 StreamNode 通过 StreamEdge 连接上游算子对应的 StreamNode
             streamGraph.addEdge(inputId, transformationId, 0);
         }
 

@@ -118,10 +118,12 @@ public class JobVertex implements java.io.Serializable {
      * Optionally, a sharing group that allows subtasks from different job vertices to run
      * concurrently in one slot.
      */
-    @Nullable private SlotSharingGroup slotSharingGroup;
+    @Nullable
+    private SlotSharingGroup slotSharingGroup;
 
     /** The group inside which the vertex subtasks share slots. */
-    @Nullable private CoLocationGroupImpl coLocationGroup;
+    @Nullable
+    private CoLocationGroupImpl coLocationGroup;
 
     /**
      * Optional, the name of the operator, such as 'Flat Map' or 'Join', to be included in the JSON
@@ -275,6 +277,7 @@ public class JobVertex implements java.io.Serializable {
      * Returns the invokable class which represents the task of this vertex.
      *
      * @param cl The classloader used to resolve user-defined classes
+     *
      * @return The invokable class, <code>null</code> if it is not set
      */
     public Class<? extends TaskInvokable> getInvokableClass(ClassLoader cl) {
@@ -332,7 +335,7 @@ public class JobVertex implements java.io.Serializable {
      * Sets the maximum parallelism for the task.
      *
      * @param maxParallelism The maximum parallelism to be set. must be between 1 and
-     *     Short.MAX_VALUE.
+     *         Short.MAX_VALUE.
      */
     public void setMaxParallelism(int maxParallelism) {
         this.maxParallelism = maxParallelism;
@@ -438,9 +441,10 @@ public class JobVertex implements java.io.Serializable {
      * means that the respective vertex must be a (transitive) input of this vertex.
      *
      * @param strictlyCoLocatedWith The vertex whose subtasks to co-locate this vertex's subtasks
-     *     with.
+     *         with.
+     *
      * @throws IllegalArgumentException Thrown, if this vertex and the vertex to co-locate with are
-     *     not in a common slot sharing group.
+     *         not in a common slot sharing group.
      * @see #setSlotSharingGroup(SlotSharingGroup)
      */
     public void setStrictlyCoLocatedWith(JobVertex strictlyCoLocatedWith) {
@@ -510,11 +514,15 @@ public class JobVertex implements java.io.Serializable {
             IntermediateDataSetID intermediateDataSetId,
             boolean isBroadcast) {
 
+        // 根据上游 JobVertex 创建 IntermediateDataSet
         IntermediateDataSet dataSet =
                 input.getOrCreateResultDataSet(intermediateDataSetId, partitionType);
 
+        // 创建 JobEdge
         JobEdge edge = new JobEdge(dataSet, this, distPattern, isBroadcast);
+        // 当前 JobVertex 输入源 JobEdge
         this.inputs.add(edge);
+        // IntermediateDataSet 集合添加消费 JobEdge
         dataSet.addConsumer(edge);
         return edge;
     }
@@ -560,18 +568,22 @@ public class JobVertex implements java.io.Serializable {
      * when the job starts.
      *
      * @param context Provides contextual information for the initialization
+     *
      * @throws Exception The method may throw exceptions which cause the job to fail immediately.
      */
-    public void initializeOnMaster(InitializeOnMasterContext context) throws Exception {}
+    public void initializeOnMaster(InitializeOnMasterContext context) throws Exception {
+    }
 
     /**
      * A hook that can be overwritten by sub classes to implement logic that is called by the master
      * after the job completed.
      *
      * @param context Provides contextual information for the initialization
+     *
      * @throws Exception The method may throw exceptions which cause the job to fail immediately.
      */
-    public void finalizeOnMaster(InitializeOnMasterContext context) throws Exception {}
+    public void finalizeOnMaster(InitializeOnMasterContext context) throws Exception {
+    }
 
     public interface InitializeOnMasterContext {
         /** The class loader for user defined code. */

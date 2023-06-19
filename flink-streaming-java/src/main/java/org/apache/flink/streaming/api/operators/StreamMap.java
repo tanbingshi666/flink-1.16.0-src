@@ -29,7 +29,9 @@ public class StreamMap<IN, OUT> extends AbstractUdfStreamOperator<OUT, MapFuncti
     private static final long serialVersionUID = 1L;
 
     public StreamMap(MapFunction<IN, OUT> mapper) {
+        // 往下追
         super(mapper);
+        // chaining-operator 策略
         chainingStrategy = ChainingStrategy.ALWAYS;
     }
 

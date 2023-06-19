@@ -64,22 +64,32 @@ public enum ClientUtils {
     }
 
     public static void executeProgram(
+            // 默认 DefaultExecutorServiceLoader
             PipelineExecutorServiceLoader executorServiceLoader,
+            // flink-conf.yaml 参数 + 入口参数
             Configuration configuration,
+            // 程序任务封装 PackagedProgram
             PackagedProgram program,
+            // false
             boolean enforceSingleJobExecution,
+            // false
             boolean suppressSysout)
             throws ProgramInvocationException {
         checkNotNull(executorServiceLoader);
+        // 用户代码类加载器
         final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
+        // 当前线程类加载器
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            // 当前线程类加载器设置为用户代码类加载器
             Thread.currentThread().setContextClassLoader(userCodeClassLoader);
 
             LOG.info(
                     "Starting program (detached: {})",
                     !configuration.getBoolean(DeploymentOptions.ATTACHED));
 
+            // 当前线程 ThreadLocal 设置环境上下文 ExecutionEnvironmentFactory
+            // ExecutionEnvironmentFactory 是一个接口 核心方法是 createExecutionEnvironment
             ContextEnvironment.setAsContext(
                     executorServiceLoader,
                     configuration,
@@ -87,6 +97,8 @@ public enum ClientUtils {
                     enforceSingleJobExecution,
                     suppressSysout);
 
+            // 当前线程 ThreadLocal 设置流式环境上下文 StreamExecutionEnvironmentFactory
+            // StreamExecutionEnvironmentFactory 是一个接口 核心方法是 createExecutionEnvironment
             StreamContextEnvironment.setAsContext(
                     executorServiceLoader,
                     configuration,
@@ -95,6 +107,7 @@ public enum ClientUtils {
                     suppressSysout);
 
             try {
+                // 触发执行程序
                 program.invokeInteractiveModeForExecution();
             } finally {
                 ContextEnvironment.unsetAsContext();
@@ -110,7 +123,8 @@ public enum ClientUtils {
      *
      * @param jobStatusSupplier supplier returning the job status.
      * @param jobResultSupplier supplier returning the job result. This will only be called if the
-     *     job reaches the FAILED state.
+     *         job reaches the FAILED state.
+     *
      * @throws JobInitializationException If the initialization failed
      */
     public static void waitUntilJobInitializationFinished(

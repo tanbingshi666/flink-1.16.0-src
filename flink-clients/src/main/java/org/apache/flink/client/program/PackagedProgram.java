@@ -104,13 +104,14 @@ public class PackagedProgram implements AutoCloseable {
      * @param jarFile The jar file which contains the plan.
      * @param classpaths Additional classpath URLs needed by the Program.
      * @param entryPointClassName Name of the class which generates the plan. Overrides the class
-     *     defined in the jar file manifest.
+     *         defined in the jar file manifest.
      * @param configuration Flink configuration which affects the classloading policy of the Program
-     *     execution.
+     *         execution.
      * @param args Optional. The arguments used to create the pact plan, depend on implementation of
-     *     the pact plan. See getDescription().
+     *         the pact plan. See getDescription().
+     *
      * @throws ProgramInvocationException This invocation is thrown if the Program can't be properly
-     *     loaded. Causes may be a missing / wrong class or manifest files.
+     *         loaded. Causes may be a missing / wrong class or manifest files.
      */
     private PackagedProgram(
             @Nullable File jarFile,
@@ -120,7 +121,9 @@ public class PackagedProgram implements AutoCloseable {
             SavepointRestoreSettings savepointRestoreSettings,
             String... args)
             throws ProgramInvocationException {
+        // 程序依赖jars
         this.classpaths = checkNotNull(classpaths);
+        // 启动程序从执行 save-point
         this.savepointSettings = checkNotNull(savepointRestoreSettings);
         this.args = checkNotNull(args);
 
@@ -129,18 +132,22 @@ public class PackagedProgram implements AutoCloseable {
                 "Either the jarFile or the entryPointClassName needs to be non-null.");
 
         // whether the job is a Python job.
+        // 是否 python 任务
         this.isPython = isPython(entryPointClassName);
 
         // load the jar file if exists
+        // 程序启动 jar
         this.jarFile = loadJarFile(jarFile);
 
         assert this.jarFile != null || entryPointClassName != null;
 
         // now that we have an entry point, we can extract the nested jar files (if any)
+        // 程序启动jar的内部jar
         this.extractedTempLibraries =
                 this.jarFile == null
                         ? Collections.emptyList()
                         : extractContainedLibraries(this.jarFile);
+        // 用户自定义类加载器
         this.userCodeClassLoader =
                 ClientUtils.buildUserCodeClassLoader(
                         getJobJarAndDependencies(),
@@ -149,6 +156,7 @@ public class PackagedProgram implements AutoCloseable {
                         configuration);
 
         // load the entry point class
+        // 加载程序启动主类
         this.mainClass =
                 loadMainClass(
                         // if no entryPointClassName name was given, we try and look one up through
@@ -158,6 +166,7 @@ public class PackagedProgram implements AutoCloseable {
                                 : getEntryPointClassNameFromJar(this.jarFile),
                         userCodeClassLoader);
 
+        // 判断程序启动主类是否存在 main()
         if (!hasMainMethod(mainClass)) {
             throw new ProgramInvocationException(
                     "The given program class does not have a main(String[]) method.");
@@ -181,8 +190,9 @@ public class PackagedProgram implements AutoCloseable {
      * plan itself and its arguments.
      *
      * @return The description of the PactProgram's input parameters.
+     *
      * @throws ProgramInvocationException This invocation is thrown if the Program can't be properly
-     *     loaded. Causes may be a missing / wrong class or manifest files.
+     *         loaded. Causes may be a missing / wrong class or manifest files.
      */
     @Nullable
     public String getDescription() throws ProgramInvocationException {
@@ -219,6 +229,7 @@ public class PackagedProgram implements AutoCloseable {
     public void invokeInteractiveModeForExecution() throws ProgramInvocationException {
         FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
         try {
+            // 触发任务程序 main()
             callMainMethod(mainClass, args);
         } finally {
             FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
@@ -329,6 +340,7 @@ public class PackagedProgram implements AutoCloseable {
         }
 
         try {
+            // 获取用户代码的 main()
             mainMethod = entryClass.getMethod("main", String[].class);
         } catch (NoSuchMethodException e) {
             throw new ProgramInvocationException(
@@ -352,6 +364,7 @@ public class PackagedProgram implements AutoCloseable {
         }
 
         try {
+            // 执行用户代码的 main()
             mainMethod.invoke(null, (Object) args);
         } catch (IllegalArgumentException e) {
             throw new ProgramInvocationException(
@@ -514,6 +527,7 @@ public class PackagedProgram implements AutoCloseable {
      * system's temp directory.
      *
      * @return The file names of the extracted temporary files.
+     *
      * @throws ProgramInvocationException Thrown, if the extraction process failed.
      */
     public static List<File> extractContainedLibraries(URL jarFile)
@@ -561,7 +575,7 @@ public class PackagedProgram implements AutoCloseable {
             throws ProgramInvocationException {
         final File output = createTempFile(rnd, input, name);
         try (final OutputStream out = new FileOutputStream(output);
-                final InputStream in = new BufferedInputStream(jar.getInputStream(input))) {
+             final InputStream in = new BufferedInputStream(jar.getInputStream(input))) {
             int numRead = 0;
             while ((numRead = in.read(buffer)) != -1) {
                 out.write(buffer, 0, numRead);
@@ -640,9 +654,11 @@ public class PackagedProgram implements AutoCloseable {
     /** A Builder For {@link PackagedProgram}. */
     public static class Builder {
 
-        @Nullable private File jarFile;
+        @Nullable
+        private File jarFile;
 
-        @Nullable private String entryPointClassName;
+        @Nullable
+        private String entryPointClassName;
 
         private String[] args = new String[0];
 
@@ -697,7 +713,8 @@ public class PackagedProgram implements AutoCloseable {
                     args);
         }
 
-        private Builder() {}
+        private Builder() {
+        }
     }
 
     public static Builder newBuilder() {

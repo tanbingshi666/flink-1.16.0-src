@@ -70,11 +70,13 @@ public class ProgramOptions extends CommandLineOptions {
     protected ProgramOptions(CommandLine line) throws CliArgsException {
         super(line);
 
+        // 程序运行类
         this.entryPointClass =
                 line.hasOption(CLASS_OPTION.getOpt())
                         ? line.getOptionValue(CLASS_OPTION.getOpt())
                         : null;
 
+        // 程序运行jar
         this.jarFilePath =
                 line.hasOption(JAR_OPTION.getOpt())
                         ? line.getOptionValue(JAR_OPTION.getOpt())
@@ -82,6 +84,7 @@ public class ProgramOptions extends CommandLineOptions {
 
         this.programArgs = extractProgramArgs(line);
 
+        // 程序依赖jars
         List<URL> classpaths = new ArrayList<URL>();
         if (line.hasOption(CLASSPATH_OPTION.getOpt())) {
             for (String path : line.getOptionValues(CLASSPATH_OPTION.getOpt())) {
@@ -94,6 +97,7 @@ public class ProgramOptions extends CommandLineOptions {
         }
         this.classpaths = classpaths;
 
+        // 程序任务并行度
         if (line.hasOption(PARALLELISM_OPTION.getOpt())) {
             hasParallelismOpt = true;
             String parString = line.getOptionValue(PARALLELISM_OPTION.getOpt());
@@ -111,11 +115,13 @@ public class ProgramOptions extends CommandLineOptions {
             parallelism = ExecutionConfig.PARALLELISM_DEFAULT;
         }
 
+        // 任务是否分离模式
         detachedMode =
                 line.hasOption(DETACHED_OPTION.getOpt())
                         || line.hasOption(YARN_DETACHED_OPTION.getOpt());
         shutdownOnAttachedExit = line.hasOption(SHUTDOWN_IF_ATTACHED_OPTION.getOpt());
 
+        // 任务重启从指定 save-point 恢复
         this.savepointSettings = CliFrontendParser.createSavepointRestoreSettings(line);
     }
 
@@ -189,6 +195,7 @@ public class ProgramOptions extends CommandLineOptions {
         if (isPythonEntryPoint(line) || containsPythonDependencyOptions(line)) {
             return createPythonProgramOptions(line);
         } else {
+            // 创建 ProgramOptions
             return new ProgramOptions(line);
         }
     }

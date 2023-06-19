@@ -123,19 +123,26 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
     @Internal
     public StreamContextEnvironment(
             final PipelineExecutorServiceLoader executorServiceLoader,
+            // 合并 flink-conf.yaml + 入口参数配置
             final Configuration clusterConfiguration,
+            // 合并 flink-conf.yaml + 入口参数配置 + 代码自定义配置
             final Configuration configuration,
             final ClassLoader userCodeClassLoader,
             final boolean enforceSingleJobExecution,
             final boolean suppressSysout,
             final boolean programConfigEnabled,
             final Collection<String> programConfigWildcards) {
+        // 往下追
         super(executorServiceLoader, configuration, userCodeClassLoader);
+        // false
         this.suppressSysout = suppressSysout;
+        // false
         this.enforceSingleJobExecution = enforceSingleJobExecution;
         this.clusterConfiguration = clusterConfiguration;
         this.jobCounter = 0;
+        // true
         this.programConfigEnabled = programConfigEnabled;
+        // 默认空
         this.programConfigWildcards = programConfigWildcards;
     }
 
@@ -228,15 +235,20 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
             final ClassLoader userCodeClassLoader,
             final boolean enforceSingleJobExecution,
             final boolean suppressSysout) {
+        // 创建 StreamExecutionEnvironmentFactory
         final StreamExecutionEnvironmentFactory factory =
                 envInitConfig -> {
+                    // 是否开启程序配置 默认 true
                     final boolean programConfigEnabled =
                             clusterConfiguration.get(DeploymentOptions.PROGRAM_CONFIG_ENABLED);
+                    // 默认空
                     final List<String> programConfigWildcards =
                             clusterConfiguration.get(DeploymentOptions.PROGRAM_CONFIG_WILDCARDS);
+                    // 合并 flink-conf.yaml + 入口参数配置 + 代码自定义配置
                     final Configuration mergedEnvConfig = new Configuration();
                     mergedEnvConfig.addAll(clusterConfiguration);
                     mergedEnvConfig.addAll(envInitConfig);
+                    // 创建 StreamContextEnvironment
                     return new StreamContextEnvironment(
                             executorServiceLoader,
                             clusterConfiguration,
@@ -247,6 +259,7 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
                             programConfigEnabled,
                             programConfigWildcards);
                 };
+        // 当前线程 ThreadLocal 设置 StreamExecutionEnvironmentFactory
         initializeContextEnvironment(factory);
     }
 
@@ -363,7 +376,7 @@ public class StreamContextEnvironment extends StreamExecutionEnvironment {
 
     private static byte[] serializeConfig(Serializable config) {
         try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                final ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+             final ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(config);
             oos.flush();
             return bos.toByteArray();

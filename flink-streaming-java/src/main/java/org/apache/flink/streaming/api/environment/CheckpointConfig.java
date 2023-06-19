@@ -131,7 +131,8 @@ public class CheckpointConfig implements java.io.Serializable {
      *
      * @deprecated Use {@link #tolerableCheckpointFailureNumber}.
      */
-    @Deprecated private boolean failOnCheckpointingErrors = true;
+    @Deprecated
+    private boolean failOnCheckpointingErrors = true;
 
     /**
      * Determines the threshold that we tolerance declined checkpoint failure number. The default
@@ -171,7 +172,8 @@ public class CheckpointConfig implements java.io.Serializable {
                 checkpointConfig.getCheckpointIdOfIgnoredInFlightData();
     }
 
-    public CheckpointConfig() {}
+    public CheckpointConfig() {
+    }
 
     // ------------------------------------------------------------------------
 
@@ -326,6 +328,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * feedback.
      *
      * @return True, if checkpointing is forced, false otherwise.
+     *
      * @deprecated This will be removed once iterations properly participate in checkpointing.
      */
     @Deprecated
@@ -339,6 +342,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * feedback.
      *
      * @param forceCheckpointing The flag to force checkpointing.
+     *
      * @deprecated This will be removed once iterations properly participate in checkpointing.
      */
     @Deprecated
@@ -487,8 +491,9 @@ public class CheckpointConfig implements java.io.Serializable {
      * org.apache.flink.configuration.CheckpointingOptions#CHECKPOINTS_DIRECTORY}.
      *
      * @param cleanupMode Externalized checkpoint clean-up behaviour.
+     *
      * @deprecated use {@link #setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup)}
-     *     instead.
+     *         instead.
      */
     @PublicEvolving
     @Deprecated
@@ -572,7 +577,8 @@ public class CheckpointConfig implements java.io.Serializable {
 
     /**
      * @return value of alignment timeout, as configured via {@link #setAlignmentTimeout(Duration)}
-     *     or {@link ExecutionCheckpointingOptions#ALIGNMENT_TIMEOUT}.
+     *         or {@link ExecutionCheckpointingOptions#ALIGNMENT_TIMEOUT}.
+     *
      * @deprecated User {@link #getAlignedCheckpointTimeout()} instead.
      */
     @Deprecated
@@ -583,8 +589,8 @@ public class CheckpointConfig implements java.io.Serializable {
 
     /**
      * @return value of alignment timeout, as configured via {@link
-     *     #setAlignedCheckpointTimeout(Duration)} or {@link
-     *     ExecutionCheckpointingOptions#ALIGNED_CHECKPOINT_TIMEOUT}.
+     *         #setAlignedCheckpointTimeout(Duration)} or {@link
+     *         ExecutionCheckpointingOptions#ALIGNED_CHECKPOINT_TIMEOUT}.
      */
     @PublicEvolving
     public Duration getAlignedCheckpointTimeout() {
@@ -640,7 +646,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * Returns the cleanup behaviour for externalized checkpoints.
      *
      * @return The cleanup behaviour for externalized checkpoints or <code>null</code> if none is
-     *     configured.
+     *         configured.
      */
     @PublicEvolving
     public ExternalizedCheckpointCleanup getExternalizedCheckpointCleanup() {
@@ -677,6 +683,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * {@link FileSystemCheckpointStorage} for more details on checkpointing to a file system.
      *
      * @param checkpointDirectory The path to write checkpoint metadata to.
+     *
      * @see #setCheckpointStorage(CheckpointStorage)
      */
     @PublicEvolving
@@ -690,6 +697,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * {@link FileSystemCheckpointStorage} for more details on checkpointing to a file system.
      *
      * @param checkpointDirectory The path to write checkpoint metadata to.
+     *
      * @see #setCheckpointStorage(CheckpointStorage)
      */
     @PublicEvolving
@@ -703,6 +711,7 @@ public class CheckpointConfig implements java.io.Serializable {
      * {@link FileSystemCheckpointStorage} for more details on checkpointing to a file system.
      *
      * @param checkpointDirectory The path to write checkpoint metadata to.
+     *
      * @see #setCheckpointStorage(String)
      */
     @PublicEvolving
@@ -713,7 +722,8 @@ public class CheckpointConfig implements java.io.Serializable {
 
     /**
      * @return The {@link CheckpointStorage} that has been configured for the job. Or {@code null}
-     *     if none has been set.
+     *         if none has been set.
+     *
      * @see #setCheckpointStorage(CheckpointStorage)
      */
     @Nullable
@@ -727,7 +737,8 @@ public class CheckpointConfig implements java.io.Serializable {
      * case of the recovery from this checkpoint.
      *
      * @param checkpointIdOfIgnoredInFlightData Checkpoint id for which in-flight data should be
-     *     ignored.
+     *         ignored.
+     *
      * @see #setCheckpointIdOfIgnoredInFlightData
      */
     @PublicEvolving
@@ -737,6 +748,7 @@ public class CheckpointConfig implements java.io.Serializable {
 
     /**
      * @return Checkpoint id for which in-flight data should be ignored.
+     *
      * @see #setCheckpointIdOfIgnoredInFlightData
      */
     @PublicEvolving
@@ -788,7 +800,7 @@ public class CheckpointConfig implements java.io.Serializable {
          * Returns whether persistent checkpoints shall be discarded on cancellation of the job.
          *
          * @return <code>true</code> if persistent checkpoints shall be discarded on cancellation of
-         *     the job.
+         *         the job.
          */
         public boolean deleteOnCancellation() {
             return this == DELETE_ON_CANCELLATION;
@@ -811,39 +823,61 @@ public class CheckpointConfig implements java.io.Serializable {
      * @param configuration a configuration to read the values from
      */
     public void configure(ReadableConfig configuration) {
+
+        // checkpoint 模式 默认 EXACTLY_ONCE
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_MODE)
                 .ifPresent(this::setCheckpointingMode);
+
+        // checkpoint 间隔 默认空
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_INTERVAL)
                 .ifPresent(i -> this.setCheckpointInterval(i.toMillis()));
+
+        // checkpoint 超时 默认 10min
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_TIMEOUT)
                 .ifPresent(t -> this.setCheckpointTimeout(t.toMillis()));
+
+        // 并发 checkpoint 默认 1
         configuration
                 .getOptional(ExecutionCheckpointingOptions.MAX_CONCURRENT_CHECKPOINTS)
                 .ifPresent(this::setMaxConcurrentCheckpoints);
+
+        // 两次 checkpoint 的最小间隔 默认 0
         configuration
                 .getOptional(ExecutionCheckpointingOptions.MIN_PAUSE_BETWEEN_CHECKPOINTS)
                 .ifPresent(m -> this.setMinPauseBetweenCheckpoints(m.toMillis()));
+
+        // 容忍 checkpoint 是否次数 默认 0
         configuration
                 .getOptional(ExecutionCheckpointingOptions.TOLERABLE_FAILURE_NUMBER)
                 .ifPresent(this::setTolerableCheckpointFailureNumber);
+
+        // 当前任务失败时 是否清除 checkpoint 目录
         configuration
                 .getOptional(ExecutionCheckpointingOptions.EXTERNALIZED_CHECKPOINT)
                 .ifPresent(this::setExternalizedCheckpointCleanup);
+
+        // 是否开启 checkpoint 对齐 默认 false
         configuration
                 .getOptional(ExecutionCheckpointingOptions.ENABLE_UNALIGNED)
                 .ifPresent(this::enableUnalignedCheckpoints);
+
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINT_ID_OF_IGNORED_IN_FLIGHT_DATA)
                 .ifPresent(this::setCheckpointIdOfIgnoredInFlightData);
+
+        // checkpoint 对齐超时时间 默认 0
         configuration
                 .getOptional(ExecutionCheckpointingOptions.ALIGNED_CHECKPOINT_TIMEOUT)
                 .ifPresent(this::setAlignedCheckpointTimeout);
+        // 是否强制对齐 checkpoint 默认 false
         configuration
                 .getOptional(ExecutionCheckpointingOptions.FORCE_UNALIGNED)
                 .ifPresent(this::setForceUnalignedCheckpoints);
+
+        // checkpoint 目录
         configuration
                 .getOptional(CheckpointingOptions.CHECKPOINTS_DIRECTORY)
                 .ifPresent(this::setCheckpointStorage);

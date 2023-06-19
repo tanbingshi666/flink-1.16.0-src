@@ -40,9 +40,10 @@ public class PipelineExecutorUtils {
      *
      * @param pipeline the pipeline whose job graph we are computing.
      * @param configuration the configuration with the necessary information such as jars and
-     *     classpaths to be included, the parallelism of the job and potential savepoint settings
-     *     used to bootstrap its state.
+     *         classpaths to be included, the parallelism of the job and potential savepoint settings
+     *         used to bootstrap its state.
      * @param userClassloader the classloader which can load user classes.
+     *
      * @return the corresponding {@link JobGraph}.
      */
     public static JobGraph getJobGraph(
@@ -55,6 +56,7 @@ public class PipelineExecutorUtils {
 
         final ExecutionConfigAccessor executionConfigAccessor =
                 ExecutionConfigAccessor.fromConfiguration(configuration);
+        // StreamGraph 转换为 JobGraph
         final JobGraph jobGraph =
                 FlinkPipelineTranslationUtil.getJobGraph(
                         userClassloader,
@@ -66,8 +68,11 @@ public class PipelineExecutorUtils {
                 .getOptional(PipelineOptionsInternal.PIPELINE_FIXED_JOB_ID)
                 .ifPresent(strJobID -> jobGraph.setJobID(JobID.fromHexString(strJobID)));
 
+        // JobGraph 添加用户程序内部 Jar (可能存在自定义 UDFs)
         jobGraph.addJars(executionConfigAccessor.getJars());
+        // JobGraph 设置程序任务依赖系统 Jar
         jobGraph.setClasspaths(executionConfigAccessor.getClasspaths());
+        // JobGraph 设置程序任务从 savepoint 点重启 (如果指定 savepoint 路径)
         jobGraph.setSavepointRestoreSettings(executionConfigAccessor.getSavepointRestoreSettings());
 
         return jobGraph;

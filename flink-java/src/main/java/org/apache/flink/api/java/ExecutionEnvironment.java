@@ -178,8 +178,11 @@ public class ExecutionEnvironment {
             final PipelineExecutorServiceLoader executorServiceLoader,
             final Configuration configuration,
             final ClassLoader userClassloader) {
+        // 默认 DefaultExecutorServiceLoader
         this.executorServiceLoader = checkNotNull(executorServiceLoader);
+        // flink-conf.yaml + 入口参数配置
         this.configuration = new Configuration(checkNotNull(configuration));
+        // 用户代码类加载
         this.userClassloader =
                 userClassloader == null ? getClass().getClassLoader() : userClassloader;
 
@@ -194,6 +197,7 @@ public class ExecutionEnvironment {
         // Given this, it is safe to overwrite the execution config default values here because all
         // other ways assume
         // that the env is already instantiated so they will overwrite the value passed here.
+        // 程序任务 ExecutionConfig 配置
         this.configure(this.configuration, this.userClassloader);
     }
 
@@ -244,8 +248,8 @@ public class ExecutionEnvironment {
      * will insert eventually an operation that runs non-parallel (parallelism of one).
      *
      * @return The parallelism used by operations, unless they override that value. This method
-     *     returns {@link ExecutionConfig#PARALLELISM_DEFAULT}, if the environment's default
-     *     parallelism should be used.
+     *         returns {@link ExecutionConfig#PARALLELISM_DEFAULT}, if the environment's default
+     *         parallelism should be used.
      */
     public int getParallelism() {
         return config.getParallelism();
@@ -295,10 +299,11 @@ public class ExecutionEnvironment {
      * defined in the configuration) should be used.
      *
      * @param numberOfExecutionRetries The number of times the system will try to re-execute failed
-     *     tasks.
+     *         tasks.
+     *
      * @deprecated This method will be replaced by {@link #setRestartStrategy}. The {@link
-     *     RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-     *     execution retries.
+     *         RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
+     *         execution retries.
      */
     @Deprecated
     @PublicEvolving
@@ -311,9 +316,10 @@ public class ExecutionEnvironment {
      * -1} indicates that the system default value (as defined in the configuration) should be used.
      *
      * @return The number of times the system will try to re-execute failed tasks.
+     *
      * @deprecated This method will be replaced by {@link #getRestartStrategy}. The {@link
-     *     RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-     *     execution retries.
+     *         RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
+     *         execution retries.
      */
     @Deprecated
     @PublicEvolving
@@ -422,9 +428,11 @@ public class ExecutionEnvironment {
      */
     @PublicEvolving
     public void configure(ReadableConfig configuration, ClassLoader classLoader) {
+        // 任务监听器 默认 null
         configuration
                 .getOptional(DeploymentOptions.JOB_LISTENERS)
                 .ifPresent(listeners -> registerCustomListeners(classLoader, listeners));
+        // 缓存文件 默认 null
         configuration
                 .getOptional(PipelineOptions.CACHED_FILES)
                 .ifPresent(
@@ -432,9 +440,12 @@ public class ExecutionEnvironment {
                             this.cacheFile.clear();
                             this.cacheFile.addAll(DistributedCache.parseCachedFilesFromString(f));
                         });
+        // pipeline 名字
         configuration
                 .getOptional(PipelineOptions.NAME)
                 .ifPresent(jobName -> this.getConfiguration().set(PipelineOptions.NAME, jobName));
+
+        // 执行配置 ExecutionConfig 参数设置
         config.configure(configuration, classLoader);
     }
 
@@ -462,7 +473,8 @@ public class ExecutionEnvironment {
      * wise. The file will be read with the UTF-8 character set.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
+     *
      * @return A {@link DataSet} that represents the data read from the given file as text lines.
      */
     public DataSource<String> readTextFile(String filePath) {
@@ -481,8 +493,9 @@ public class ExecutionEnvironment {
      * files.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
      * @param charsetName The name of the character set used to read the file.
+     *
      * @return A {@link DataSet} that represents the data read from the given file as text lines.
      */
     public DataSource<String> readTextFile(String filePath, String charsetName) {
@@ -505,7 +518,8 @@ public class ExecutionEnvironment {
      * <p>The file will be read with the UTF-8 character set.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
+     *
      * @return A {@link DataSet} that represents the data read from the given file as text lines.
      */
     public DataSource<StringValue> readTextFileWithValue(String filePath) {
@@ -527,10 +541,11 @@ public class ExecutionEnvironment {
      * <p>The {@link java.nio.charset.Charset} with the given name will be used to read the files.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
      * @param charsetName The name of the character set used to read the file.
      * @param skipInvalidLines A flag to indicate whether to skip lines that cannot be read with the
-     *     given character set.
+     *         given character set.
+     *
      * @return A DataSet that represents the data read from the given file as text lines.
      */
     public DataSource<StringValue> readTextFileWithValue(
@@ -553,10 +568,11 @@ public class ExecutionEnvironment {
      * it produces a DataSet not through {@link org.apache.flink.api.java.tuple.Tuple1}.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
      * @param typeClass The primitive type class to be read.
+     *
      * @return A {@link DataSet} that represents the data read from the given file as primitive
-     *     type.
+     *         type.
      */
     public <X> DataSource<X> readFileOfPrimitives(String filePath, Class<X> typeClass) {
         Preconditions.checkNotNull(filePath, "The file path may not be null.");
@@ -574,11 +590,12 @@ public class ExecutionEnvironment {
      * field, but it produces a DataSet not through {@link org.apache.flink.api.java.tuple.Tuple1}.
      *
      * @param filePath The path of the file, as a URI (e.g., "file:///some/local/file" or
-     *     "hdfs://host:port/file/path").
+     *         "hdfs://host:port/file/path").
      * @param delimiter The delimiter of the given file.
      * @param typeClass The primitive type class to be read.
+     *
      * @return A {@link DataSet} that represents the data read from the given file as primitive
-     *     type.
+     *         type.
      */
     public <X> DataSource<X> readFileOfPrimitives(
             String filePath, String delimiter, Class<X> typeClass) {
@@ -599,6 +616,7 @@ public class ExecutionEnvironment {
      * the read and parsed CSV input.
      *
      * @param filePath The path of the CSV file.
+     *
      * @return A CsvReader that can be used to configure the CSV input.
      */
     public CsvReader readCsvFile(String filePath) {
@@ -643,7 +661,9 @@ public class ExecutionEnvironment {
      * format.
      *
      * @param inputFormat The input format used to create the data set.
+     *
      * @return A {@link DataSet} that represents the data created by the input format.
+     *
      * @see #createInput(InputFormat, TypeInformation)
      */
     public <X> DataSource<X> createInput(InputFormat<X, ?> inputFormat) {
@@ -672,7 +692,9 @@ public class ExecutionEnvironment {
      * that do not implement the {@link ResultTypeQueryable} interface.
      *
      * @param inputFormat The input format used to create the data set.
+     *
      * @return A {@link DataSet} that represents the data created by the input format.
+     *
      * @see #createInput(InputFormat)
      */
     public <X> DataSource<X> createInput(
@@ -702,7 +724,9 @@ public class ExecutionEnvironment {
      * with a parallelism of one.
      *
      * @param data The collection of elements to create the data set from.
+     *
      * @return A DataSet representing the given collection.
+     *
      * @see #fromCollection(Collection, TypeInformation)
      */
     public <X> DataSource<X> fromCollection(Collection<X> data) {
@@ -732,7 +756,9 @@ public class ExecutionEnvironment {
      *
      * @param data The collection of elements to create the data set from.
      * @param type The TypeInformation for the produced data set.
+     *
      * @return A DataSet representing the given collection.
+     *
      * @see #fromCollection(Collection)
      */
     public <X> DataSource<X> fromCollection(Collection<X> data, TypeInformation<X> type) {
@@ -760,7 +786,9 @@ public class ExecutionEnvironment {
      *
      * @param data The collection of elements to create the data set from.
      * @param type The class of the data produced by the iterator. Must not be a generic class.
+     *
      * @return A DataSet representing the elements in the iterator.
+     *
      * @see #fromCollection(Iterator, TypeInformation)
      */
     public <X> DataSource<X> fromCollection(Iterator<X> data, Class<X> type) {
@@ -779,7 +807,9 @@ public class ExecutionEnvironment {
      *
      * @param data The collection of elements to create the data set from.
      * @param type The TypeInformation for the produced data set.
+     *
      * @return A DataSet representing the elements in the iterator.
+     *
      * @see #fromCollection(Iterator, Class)
      */
     public <X> DataSource<X> fromCollection(Iterator<X> data, TypeInformation<X> type) {
@@ -800,6 +830,7 @@ public class ExecutionEnvironment {
      * with a parallelism of one.
      *
      * @param data The elements to make up the data set.
+     *
      * @return A DataSet representing the given list of elements.
      */
     @SafeVarargs
@@ -835,6 +866,7 @@ public class ExecutionEnvironment {
      *
      * @param type The base class type for every element in the collection.
      * @param data The elements to make up the data set.
+     *
      * @return A DataSet representing the given list of elements.
      */
     @SafeVarargs
@@ -872,7 +904,9 @@ public class ExecutionEnvironment {
      *
      * @param iterator The iterator that produces the elements of the data set.
      * @param type The class of the data produced by the iterator. Must not be a generic class.
+     *
      * @return A DataSet representing the elements in the iterator.
+     *
      * @see #fromParallelCollection(SplittableIterator, TypeInformation)
      */
     public <X> DataSource<X> fromParallelCollection(SplittableIterator<X> iterator, Class<X> type) {
@@ -892,7 +926,9 @@ public class ExecutionEnvironment {
      *
      * @param iterator The iterator that produces the elements of the data set.
      * @param type The TypeInformation for the produced data set.
+     *
      * @return A DataSet representing the elements in the iterator.
+     *
      * @see #fromParallelCollection(SplittableIterator, Class)
      */
     public <X> DataSource<X> fromParallelCollection(
@@ -913,6 +949,7 @@ public class ExecutionEnvironment {
      *
      * @param from The number to start at (inclusive).
      * @param to The number to stop at (inclusive).
+     *
      * @return A DataSet, containing all number in the {@code [from, to]} interval.
      */
     public DataSource<Long> generateSequence(long from, long to) {
@@ -936,6 +973,7 @@ public class ExecutionEnvironment {
      * <p>The program execution will be logged and displayed with a generated default name.
      *
      * @return The result of the job execution, containing elapsed time and accumulators.
+     *
      * @throws Exception Thrown, if the program executions fails.
      */
     public JobExecutionResult execute() throws Exception {
@@ -952,6 +990,7 @@ public class ExecutionEnvironment {
      * <p>The program execution will be logged and displayed with the given job name.
      *
      * @return The result of the job execution, containing elapsed time and accumulators.
+     *
      * @throws Exception Thrown, if the program executions fails.
      */
     public JobExecutionResult execute(String jobName) throws Exception {
@@ -1010,7 +1049,8 @@ public class ExecutionEnvironment {
      * <p>The program execution will be logged and displayed with a generated default name.
      *
      * @return A {@link JobClient} that can be used to communicate with the submitted job, completed
-     *     on submission succeeded.
+     *         on submission succeeded.
+     *
      * @throws Exception Thrown, if the program submission fails.
      */
     @PublicEvolving
@@ -1029,7 +1069,8 @@ public class ExecutionEnvironment {
      * <p>The program execution will be logged and displayed with the given job name.
      *
      * @return A {@link JobClient} that can be used to communicate with the submitted job, completed
-     *     on submission succeeded.
+     *         on submission succeeded.
+     *
      * @throws Exception Thrown, if the program submission fails.
      */
     @PublicEvolving
@@ -1070,6 +1111,7 @@ public class ExecutionEnvironment {
      * using a JSON representation of the execution data flow graph.
      *
      * @return The execution plan of the program, as a JSON String.
+     *
      * @throws Exception Thrown, if the compiler could not be instantiated.
      */
     public String getExecutionPlan() throws Exception {
@@ -1089,7 +1131,7 @@ public class ExecutionEnvironment {
      * org.apache.flink.api.common.functions.RuntimeContext#getDistributedCache()}.
      *
      * @param filePath The path of the file, as a URI (e.g. "file:///some/path" or
-     *     "hdfs://host:port/and/path")
+     *         "hdfs://host:port/and/path")
      * @param name The name under which the file is registered.
      */
     public void registerCachedFile(String filePath, String name) {
@@ -1108,7 +1150,7 @@ public class ExecutionEnvironment {
      * org.apache.flink.api.common.functions.RuntimeContext#getDistributedCache()}.
      *
      * @param filePath The path of the file, as a URI (e.g. "file:///some/path" or
-     *     "hdfs://host:port/and/path")
+     *         "hdfs://host:port/and/path")
      * @param name The name under which the file is registered.
      * @param executable flag indicating whether the file should be executable
      */
@@ -1138,6 +1180,7 @@ public class ExecutionEnvironment {
      * operations. This automatically starts a new stage of execution.
      *
      * @param jobName The name attached to the plan (displayed in logs and monitoring).
+     *
      * @return The program's plan.
      */
     @Internal
@@ -1154,6 +1197,7 @@ public class ExecutionEnvironment {
      *
      * @param jobName The name attached to the plan (displayed in logs and monitoring).
      * @param clearSinks Whether or not to start a new stage of execution.
+     *
      * @return The program's plan.
      */
     @Internal
@@ -1261,6 +1305,7 @@ public class ExecutionEnvironment {
      * parallelism specified in the parameter.
      *
      * @param parallelism The parallelism for the local environment.
+     *
      * @return A local execution environment with the specified parallelism.
      */
     public static LocalEnvironment createLocalEnvironment(int parallelism) {
@@ -1273,6 +1318,7 @@ public class ExecutionEnvironment {
      * parallelism specified in the parameter.
      *
      * @param customConfiguration Pass a custom configuration to the LocalEnvironment.
+     *
      * @return A local execution environment with the specified parallelism.
      */
     public static LocalEnvironment createLocalEnvironment(Configuration customConfiguration) {
@@ -1307,6 +1353,7 @@ public class ExecutionEnvironment {
      *
      * @param configuration to start the {@link LocalEnvironment} with
      * @param defaultParallelism to initialize the {@link LocalEnvironment} with
+     *
      * @return {@link LocalEnvironment}
      */
     private static LocalEnvironment createLocalEnvironment(
@@ -1327,11 +1374,12 @@ public class ExecutionEnvironment {
      * is set explicitly via {@link ExecutionEnvironment#setParallelism(int)}.
      *
      * @param host The host name or address of the master (JobManager), where the program should be
-     *     executed.
+     *         executed.
      * @param port The port of the master (JobManager), where the program should be executed.
      * @param jarFiles The JAR files with code that needs to be shipped to the cluster. If the
-     *     program uses user-defined functions, user-defined input formats, or any libraries, those
-     *     must be provided in the JAR files.
+     *         program uses user-defined functions, user-defined input formats, or any libraries, those
+     *         must be provided in the JAR files.
+     *
      * @return A remote environment that executes the program on a cluster.
      */
     public static ExecutionEnvironment createRemoteEnvironment(
@@ -1349,12 +1397,13 @@ public class ExecutionEnvironment {
      * <p>Cluster configuration has to be done in the remotely running Flink instance.
      *
      * @param host The host name or address of the master (JobManager), where the program should be
-     *     executed.
+     *         executed.
      * @param port The port of the master (JobManager), where the program should be executed.
      * @param clientConfiguration Configuration used by the client that connects to the cluster.
      * @param jarFiles The JAR files with code that needs to be shipped to the cluster. If the
-     *     program uses user-defined functions, user-defined input formats, or any libraries, those
-     *     must be provided in the JAR files.
+     *         program uses user-defined functions, user-defined input formats, or any libraries, those
+     *         must be provided in the JAR files.
+     *
      * @return A remote environment that executes the program on a cluster.
      */
     public static ExecutionEnvironment createRemoteEnvironment(
@@ -1368,12 +1417,13 @@ public class ExecutionEnvironment {
      * the cluster. The execution will use the specified parallelism.
      *
      * @param host The host name or address of the master (JobManager), where the program should be
-     *     executed.
+     *         executed.
      * @param port The port of the master (JobManager), where the program should be executed.
      * @param parallelism The parallelism to use during the execution.
      * @param jarFiles The JAR files with code that needs to be shipped to the cluster. If the
-     *     program uses user-defined functions, user-defined input formats, or any libraries, those
-     *     must be provided in the JAR files.
+     *         program uses user-defined functions, user-defined input formats, or any libraries, those
+     *         must be provided in the JAR files.
+     *
      * @return A remote environment that executes the program on a cluster.
      */
     public static ExecutionEnvironment createRemoteEnvironment(
@@ -1422,6 +1472,7 @@ public class ExecutionEnvironment {
      */
     protected static void initializeContextEnvironment(ExecutionEnvironmentFactory ctx) {
         contextEnvironmentFactory = Preconditions.checkNotNull(ctx);
+        // 当前线程 ThreadLocal 设置 ExecutionEnvironmentFactory
         threadLocalContextEnvironmentFactory.set(contextEnvironmentFactory);
     }
 
@@ -1440,7 +1491,7 @@ public class ExecutionEnvironment {
      * RemoteEnvironment.
      *
      * @return True, if it is possible to explicitly instantiate a LocalEnvironment or a
-     *     RemoteEnvironment, false otherwise.
+     *         RemoteEnvironment, false otherwise.
      */
     @Internal
     public static boolean areExplicitEnvironmentsAllowed() {

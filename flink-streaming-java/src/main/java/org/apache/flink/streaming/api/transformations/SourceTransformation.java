@@ -43,13 +43,14 @@ public class SourceTransformation<OUT, SplitT extends SourceSplit, EnumChkT>
     private final WatermarkStrategy<OUT> watermarkStrategy;
 
     private ChainingStrategy chainingStrategy = ChainingStrategy.DEFAULT_CHAINING_STRATEGY;
-    private @Nullable String coordinatorListeningID;
+    private @Nullable
+    String coordinatorListeningID;
 
     /**
      * Creates a new {@code Transformation} with the given name, output type and parallelism.
      *
      * @param name The name of the {@code Transformation}, this will be shown in Visualizations and
-     *     the Log
+     *         the Log
      * @param source The {@link Source} itself
      * @param watermarkStrategy The {@link WatermarkStrategy} to use
      * @param outputType The output type of this {@code Transformation}
@@ -61,8 +62,11 @@ public class SourceTransformation<OUT, SplitT extends SourceSplit, EnumChkT>
             WatermarkStrategy<OUT> watermarkStrategy,
             TypeInformation<OUT> outputType,
             int parallelism) {
+        // 往下追
         super(name, outputType, parallelism);
+        // source 算子 比如 KafkaSource
         this.source = source;
+        // source 算子 watermark 策略
         this.watermarkStrategy = watermarkStrategy;
     }
 

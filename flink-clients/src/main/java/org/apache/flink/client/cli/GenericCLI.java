@@ -103,8 +103,11 @@ public class GenericCLI implements CustomCommandLine {
 
     @Override
     public void addGeneralOptions(Options baseOptions) {
+        // bin/flink run -e
         baseOptions.addOption(executorOption);
+        // bin/flink run -t
         baseOptions.addOption(targetOption);
+        // bin/flink run -Dproperty=value
         baseOptions.addOption(DynamicPropertiesUtil.DYNAMIC_PROPERTIES);
     }
 

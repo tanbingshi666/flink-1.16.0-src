@@ -59,6 +59,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
 
     protected SingleOutputStreamOperator(
             StreamExecutionEnvironment environment, Transformation<T> transformation) {
+        // 往下追
         super(environment, transformation);
     }
 
@@ -93,6 +94,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * Otherwise, job submission will fail.
      *
      * @param uid The unique user-specified ID of this transformation.
+     *
      * @return The operator with the specified ID.
      */
     @PublicEvolving
@@ -120,7 +122,8 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * mapping from states to their target operator.
      *
      * @param uidHash The user provided hash for this operator. This will become the JobVertexID,
-     *     which is shown in the logs and web ui.
+     *         which is shown in the logs and web ui.
+     *
      * @return The operator with the user provided hash.
      */
     @PublicEvolving
@@ -133,6 +136,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * Sets the parallelism for this operator.
      *
      * @param parallelism The parallelism for this operator.
+     *
      * @return The operator with set parallelism.
      */
     public SingleOutputStreamOperator<T> setParallelism(int parallelism) {
@@ -149,6 +153,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * number of key groups used for partitioned state.
      *
      * @param maxParallelism Maximum parallelism
+     *
      * @return The operator with set maximum parallelism
      */
     @PublicEvolving
@@ -170,6 +175,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      *
      * @param minResources The minimum resources for this operator.
      * @param preferredResources The preferred resources for this operator.
+     *
      * @return The operator with set minimum and preferred resources.
      */
     private SingleOutputStreamOperator<T> setResources(
@@ -184,6 +190,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * default.
      *
      * @param resources The resources for this operator.
+     *
      * @return The operator with set minimum and preferred resources.
      */
     private SingleOutputStreamOperator<T> setResources(ResourceSpec resources) {
@@ -222,6 +229,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * through the network, without additional buffering.
      *
      * @param timeoutMillis The maximum time between two output flushes.
+     *
      * @return The operator with buffer timeout set.
      */
     public SingleOutputStreamOperator<T> setBufferTimeout(long timeoutMillis) {
@@ -235,6 +243,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * possibly be co-located on the same thread for increased performance.
      *
      * @param strategy The selected {@link ChainingStrategy}
+     *
      * @return The operator with the modified chaining strategy
      */
     @PublicEvolving
@@ -289,6 +298,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * please use the {@link #returns(TypeHint)} method.
      *
      * @param typeClass The class of the returned data type.
+     *
      * @return This operator with the type information corresponding to the given type class.
      */
     public SingleOutputStreamOperator<T> returns(Class<T> typeClass) {
@@ -319,6 +329,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * }</pre>
      *
      * @param typeHint The type hint for the returned data type.
+     *
      * @return This operator with the type information corresponding to the given type hint.
      */
     public SingleOutputStreamOperator<T> returns(TypeHint<T> typeHint) {
@@ -343,6 +354,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * preferable.
      *
      * @param typeInfo type information as a return type hint
+     *
      * @return This operator with a given return type hint.
      */
     public SingleOutputStreamOperator<T> returns(TypeInformation<T> typeInfo) {
@@ -397,7 +409,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * into the side output with the given {@link OutputTag}.
      *
      * @see org.apache.flink.streaming.api.functions.ProcessFunction.Context#output(OutputTag,
-     *     Object)
+     *         Object)
      */
     public <X> SideOutputDataStream<X> getSideOutput(OutputTag<X> sideOutputTag) {
         sideOutputTag = clean(requireNonNull(sideOutputTag));
@@ -430,6 +442,7 @@ public class SingleOutputStreamOperator<T> extends DataStream<T> {
      * debugging.
      *
      * @param description The description for this operation.
+     *
      * @return The operation with new description.
      */
     @PublicEvolving

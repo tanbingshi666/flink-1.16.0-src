@@ -46,12 +46,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * @param <ClusterID> the type of the id of the cluster.
  * @param <ClientFactory> the type of the {@link ClusterClientFactory} used to create/retrieve a
- *     client to the target cluster.
+ *         client to the target cluster.
  */
 @Internal
 @Deprecated
 public class AbstractJobClusterExecutor<
-                ClusterID, ClientFactory extends ClusterClientFactory<ClusterID>>
+        ClusterID, ClientFactory extends ClusterClientFactory<ClusterID>>
         implements PipelineExecutor {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractJobClusterExecutor.class);
@@ -59,6 +59,7 @@ public class AbstractJobClusterExecutor<
     private final ClientFactory clusterClientFactory;
 
     public AbstractJobClusterExecutor(@Nonnull final ClientFactory clusterClientFactory) {
+        // clusterClientFactory = YarnClusterClientFactory
         this.clusterClientFactory = checkNotNull(clusterClientFactory);
     }
 
@@ -68,17 +69,23 @@ public class AbstractJobClusterExecutor<
             @Nonnull final Configuration configuration,
             @Nonnull final ClassLoader userCodeClassloader)
             throws Exception {
+        // StreamGraph 转换为 JobGraph
         final JobGraph jobGraph =
                 PipelineExecutorUtils.getJobGraph(pipeline, configuration, userCodeClassloader);
 
-        try (final ClusterDescriptor<ClusterID> clusterDescriptor =
-                clusterClientFactory.createClusterDescriptor(configuration)) {
+        try (
+                // 获取集群描述器
+                // 如果程序任务提交到 Yarn 返回 YarnClusterDescriptor
+                final ClusterDescriptor<ClusterID> clusterDescriptor =
+                        clusterClientFactory.createClusterDescriptor(configuration)) {
             final ExecutionConfigAccessor configAccessor =
                     ExecutionConfigAccessor.fromConfiguration(configuration);
 
+            // 获取程序任务提交到集群的资源配置 (JM TM)
             final ClusterSpecification clusterSpecification =
                     clusterClientFactory.getClusterSpecification(configuration);
 
+            // 提交程序任务(JobGraph)到集群 比如提交到 Yarn
             final ClusterClientProvider<ClusterID> clusterClientProvider =
                     clusterDescriptor.deployJobCluster(
                             clusterSpecification, jobGraph, configAccessor.getDetachedMode());

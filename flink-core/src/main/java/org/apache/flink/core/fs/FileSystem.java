@@ -285,8 +285,9 @@ public abstract class FileSystem {
      * '/user/USERNAME/in.txt'} is interpreted as {@code
      * 'hdfs://localhost:9000/user/USERNAME/in.txt'}.
      *
-     * @deprecated use {@link #initialize(Configuration, PluginManager)} instead.
      * @param config the configuration from where to fetch the parameter.
+     *
+     * @deprecated use {@link #initialize(Configuration, PluginManager)} instead.
      */
     @Deprecated
     public static void initialize(Configuration config) throws IllegalConfigurationException {
@@ -314,7 +315,7 @@ public abstract class FileSystem {
      *
      * @param config the configuration from where to fetch the parameter.
      * @param pluginManager optional plugin manager that is used to initialized filesystems provided
-     *     as plugins.
+     *         as plugins.
      */
     public static void initialize(Configuration config, @Nullable PluginManager pluginManager)
             throws IllegalConfigurationException {
@@ -326,6 +327,7 @@ public abstract class FileSystem {
             FS_FACTORIES.clear();
 
             Collection<Supplier<Iterator<FileSystemFactory>>> factorySuppliers = new ArrayList<>(2);
+            // 加载 FileSystemFactory 所有子类
             factorySuppliers.add(() -> ServiceLoader.load(FileSystemFactory.class).iterator());
 
             if (pluginManager != null) {
@@ -401,8 +403,10 @@ public abstract class FileSystem {
      * identified by the given {@link URI}.
      *
      * @param uri the {@link URI} identifying the file system
+     *
      * @return a reference to the {@link FileSystem} instance for accessing the file system
-     *     identified by the given {@link URI}.
+     *         identified by the given {@link URI}.
+     *
      * @throws IOException thrown if a reference to the file system instance could not be obtained
      */
     public static FileSystem get(URI uri) throws IOException {
@@ -504,7 +508,7 @@ public abstract class FileSystem {
             if (factory != null) {
                 ClassLoader classLoader = factory.getClassLoader();
                 try (TemporaryClassLoaderContext ignored =
-                        TemporaryClassLoaderContext.of(classLoader)) {
+                             TemporaryClassLoaderContext.of(classLoader)) {
                     fs = factory.create(uri);
                 }
             } else if (!ALLOWED_FALLBACK_FILESYSTEMS.contains(uri.getScheme())
@@ -520,7 +524,8 @@ public abstract class FileSystem {
                                         + "use a Hadoop file system for that scheme, please add the scheme to the configuration fs"
                                         + ".allowed-fallback-filesystems. For a full list of supported file systems, "
                                         + "please see https://nightlies.apache.org/flink/flink-docs-stable/ops/filesystems/.",
-                                uri.getScheme(), String.join(", ", plugins)));
+                                uri.getScheme(),
+                                String.join(", ", plugins)));
             } else {
                 try {
                     fs = FALLBACK_FACTORY.create(uri);
@@ -536,7 +541,8 @@ public abstract class FileSystem {
                                                 + "configured properly and resides within its own subfolder in the plugins directory. "
                                                 + "See https://nightlies.apache.org/flink/flink-docs-stable/docs/deployment/filesystems/plugins/ "
                                                 + "for more information.",
-                                        uri.getScheme(), String.join(", ", plugins)));
+                                        uri.getScheme(),
+                                        String.join(", ", plugins)));
                     } else {
                         throw new UnsupportedFileSystemSchemeException(
                                 "Could not find a file system implementation for scheme '"
@@ -599,9 +605,11 @@ public abstract class FileSystem {
      * Return a file status object that represents the path.
      *
      * @param f The path we want information from
+     *
      * @return a FileStatus object
+     *
      * @throws FileNotFoundException when the path does not exist; IOException see specific
-     *     implementation
+     *         implementation
      */
     public abstract FileStatus getFileStatus(Path f) throws IOException;
 
@@ -640,6 +648,7 @@ public abstract class FileSystem {
      * support this method, throwing an {@code UnsupportedOperationException}.
      *
      * @return A RecoverableWriter for this file system.
+     *
      * @throws IOException Thrown, if the recoverable writer cannot be instantiated.
      */
     public RecoverableWriter createRecoverableWriter() throws IOException {
@@ -652,7 +661,8 @@ public abstract class FileSystem {
      * minimize I/O time.
      *
      * @return the number of bytes that large input files should be optimally be split into to
-     *     minimize I/O time
+     *         minimize I/O time
+     *
      * @deprecated This value is no longer used and is meaningless.
      */
     @Deprecated
@@ -664,7 +674,9 @@ public abstract class FileSystem {
      * List the statuses of the files/directories in the given path if the path is a directory.
      *
      * @param f given path
+     *
      * @return the statuses of the files/directories in the given path
+     *
      * @throws IOException
      */
     public abstract FileStatus[] listStatus(Path f) throws IOException;
@@ -687,9 +699,11 @@ public abstract class FileSystem {
      *
      * @param f the path to delete
      * @param recursive if path is a directory and set to <code>true</code>, the directory is
-     *     deleted else throws an exception. In case of a file the recursive can be set to either
-     *     <code>true</code> or <code>false</code>
+     *         deleted else throws an exception. In case of a file the recursive can be set to either
+     *         <code>true</code> or <code>false</code>
+     *
      * @return <code>true</code> if delete is successful, <code>false</code> otherwise
+     *
      * @throws IOException
      */
     public abstract boolean delete(Path f, boolean recursive) throws IOException;
@@ -699,8 +713,10 @@ public abstract class FileSystem {
      * 'mkdir -p'. Existence of the directory hierarchy is not an error.
      *
      * @param f the directory/directories to be created
+     *
      * @return <code>true</code> if at least one new directory has been created, <code>false</code>
-     *     otherwise
+     *         otherwise
+     *
      * @throws IOException thrown if an I/O error occurs while creating the directory
      */
     public abstract boolean mkdirs(Path f) throws IOException;
@@ -715,14 +731,15 @@ public abstract class FileSystem {
      *
      * @param f the file name to open
      * @param overwrite if a file with this name already exists, then if true, the file will be
-     *     overwritten, and if false an error will be thrown.
+     *         overwritten, and if false an error will be thrown.
      * @param bufferSize the size of the buffer to be used.
      * @param replication required block replication for the file.
      * @param blockSize the size of the file blocks
+     *
      * @throws IOException Thrown, if the stream could not be opened because of an I/O, or because a
-     *     file already exists at that path and the write mode indicates to not overwrite the file.
+     *         file already exists at that path and the write mode indicates to not overwrite the file.
      * @deprecated Deprecated because not well supported across types of file systems. Control the
-     *     behavior of specific file systems via configurations instead.
+     *         behavior of specific file systems via configurations instead.
      */
     @Deprecated
     public FSDataOutputStream create(
@@ -737,9 +754,10 @@ public abstract class FileSystem {
      *
      * @param f the file name to open
      * @param overwrite if a file with this name already exists, then if true, the file will be
-     *     overwritten, and if false an error will be thrown.
+     *         overwritten, and if false an error will be thrown.
+     *
      * @throws IOException Thrown, if the stream could not be opened because of an I/O, or because a
-     *     file already exists at that path and the write mode indicates to not overwrite the file.
+     *         file already exists at that path and the write mode indicates to not overwrite the file.
      * @deprecated Use {@link #create(Path, WriteMode)} instead.
      */
     @Deprecated
@@ -755,10 +773,12 @@ public abstract class FileSystem {
      *
      * @param f The file path to write to
      * @param overwriteMode The action to take if a file or directory already exists at the given
-     *     path.
+     *         path.
+     *
      * @return The stream to the new file at the target path.
+     *
      * @throws IOException Thrown, if the stream could not be opened because of an I/O, or because a
-     *     file already exists at that path and the write mode indicates to not overwrite the file.
+     *         file already exists at that path and the write mode indicates to not overwrite the file.
      */
     public abstract FSDataOutputStream create(Path f, WriteMode overwriteMode) throws IOException;
 
@@ -767,7 +787,9 @@ public abstract class FileSystem {
      *
      * @param src the file/directory to rename
      * @param dst the new name of the file/directory
+     *
      * @return <code>true</code> if the renaming was successful, <code>false</code> otherwise
+     *
      * @throws IOException
      */
     public abstract boolean rename(Path src, Path dst) throws IOException;
@@ -830,8 +852,10 @@ public abstract class FileSystem {
      * @param outPath Output path that should be prepared.
      * @param writeMode Write mode to consider.
      * @param createDirectory True, to initialize a directory at the given path, false to prepare
-     *     space for a file.
+     *         space for a file.
+     *
      * @return True, if the path was successfully prepared, false otherwise.
+     *
      * @throws IOException Thrown, if any of the file system access operations failed.
      */
     public boolean initOutPathLocalFS(Path outPath, WriteMode writeMode, boolean createDirectory)
@@ -965,7 +989,9 @@ public abstract class FileSystem {
      * @param outPath Output path that should be prepared.
      * @param writeMode Write mode to consider.
      * @param createDirectory True, to initialize a directory at the given path, false otherwise.
+     *
      * @return True, if the path was successfully prepared, false otherwise.
+     *
      * @throws IOException Thrown, if any of the file system access operations failed.
      */
     public boolean initOutPathDistFS(Path outPath, WriteMode writeMode, boolean createDirectory)
@@ -1162,7 +1188,8 @@ public abstract class FileSystem {
         private final String scheme;
 
         /** The authority of the file system. */
-        @Nullable private final String authority;
+        @Nullable
+        private final String authority;
 
         /**
          * Creates a file system key from a given scheme and an authority.
@@ -1183,9 +1210,9 @@ public abstract class FileSystem {
                 final FSKey that = (FSKey) obj;
                 return this.scheme.equals(that.scheme)
                         && (this.authority == null
-                                ? that.authority == null
-                                : (that.authority != null
-                                        && this.authority.equals(that.authority)));
+                        ? that.authority == null
+                        : (that.authority != null
+                        && this.authority.equals(that.authority)));
             } else {
                 return false;
             }

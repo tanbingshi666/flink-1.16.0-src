@@ -88,7 +88,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * The constant to use for the parallelism, if the system should use the number of currently
      * available slots.
      */
-    @Deprecated public static final int PARALLELISM_AUTO_MAX = Integer.MAX_VALUE;
+    @Deprecated
+    public static final int PARALLELISM_AUTO_MAX = Integer.MAX_VALUE;
 
     /**
      * The flag value indicating use of the default parallelism. This value can be used to reset the
@@ -123,7 +124,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
     /**
      * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
      */
-    @Deprecated private int numberOfExecutionRetries = -1;
+    @Deprecated
+    private int numberOfExecutionRetries = -1;
 
     private boolean forceKryo = false;
 
@@ -158,7 +160,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
     /**
      * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
      */
-    @Deprecated private long executionRetryDelay = DEFAULT_RESTART_DELAY;
+    @Deprecated
+    private long executionRetryDelay = DEFAULT_RESTART_DELAY;
 
     private RestartStrategies.RestartStrategyConfiguration restartStrategyConfiguration =
             new RestartStrategies.FallbackRestartStrategyConfiguration();
@@ -333,8 +336,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * parallelism of one (the final reduce to the single result value).
      *
      * @return The parallelism used by operations, unless they override that value. This method
-     *     returns {@link #PARALLELISM_DEFAULT} if the environment's default parallelism should be
-     *     used.
+     *         returns {@link #PARALLELISM_DEFAULT} if the environment's default parallelism should be
+     *         used.
      */
     public int getParallelism() {
         return parallelism;
@@ -498,6 +501,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * -1} indicates that the system default value (as defined in the configuration) should be used.
      *
      * @return The number of times the system will try to re-execute failed tasks.
+     *
      * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
      */
     @Deprecated
@@ -509,6 +513,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * Returns the delay between execution retries.
      *
      * @return The delay between successive execution retries in milliseconds.
+     *
      * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
      */
     @Deprecated
@@ -522,11 +527,13 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * defined in the configuration) should be used.
      *
      * @param numberOfExecutionRetries The number of times the system will try to re-execute failed
-     *     tasks.
+     *         tasks.
+     *
      * @return The current execution configuration
+     *
      * @deprecated This method will be replaced by {@link #setRestartStrategy}. The {@link
-     *     RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-     *     execution retries.
+     *         RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
+     *         execution retries.
      */
     @Deprecated
     public ExecutionConfig setNumberOfExecutionRetries(int numberOfExecutionRetries) {
@@ -542,10 +549,12 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * Sets the delay between executions.
      *
      * @param executionRetryDelay The number of milliseconds the system will wait to retry.
+     *
      * @return The current execution configuration
+     *
      * @deprecated This method will be replaced by {@link #setRestartStrategy}. The {@link
-     *     RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the delay between
-     *     successive execution attempts.
+     *         RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the delay between
+     *         successive execution attempts.
      */
     @Deprecated
     public ExecutionConfig setExecutionRetryDelay(long executionRetryDelay) {
@@ -586,11 +595,13 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * implementation has no effect.
      *
      * @param ignored Ignored parameter.
+     *
      * @deprecated due to the deprecation of {@code InputDependencyConstraint}.
      */
     @PublicEvolving
     @Deprecated
-    public void setDefaultInputDependencyConstraint(InputDependencyConstraint ignored) {}
+    public void setDefaultInputDependencyConstraint(InputDependencyConstraint ignored) {
+    }
 
     /**
      * This method is deprecated. It was used to return the {@link InputDependencyConstraint}
@@ -598,6 +609,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * FLINK-20589.
      *
      * @return The previous default constraint {@link InputDependencyConstraint#ANY}.
+     *
      * @deprecated due to the deprecation of {@code InputDependencyConstraint}.
      */
     @PublicEvolving
@@ -869,13 +881,13 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
     /** Returns the registered types with Kryo Serializers. */
     public LinkedHashMap<Class<?>, SerializableSerializer<?>>
-            getRegisteredTypesWithKryoSerializers() {
+    getRegisteredTypesWithKryoSerializers() {
         return registeredTypesWithKryoSerializers;
     }
 
     /** Returns the registered types with their Kryo Serializer classes. */
     public LinkedHashMap<Class<?>, Class<? extends Serializer<?>>>
-            getRegisteredTypesWithKryoSerializerClasses() {
+    getRegisteredTypesWithKryoSerializerClasses() {
         return registeredTypesWithKryoSerializerClasses;
     }
 
@@ -886,7 +898,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
     /** Returns the registered default Kryo Serializer classes. */
     public LinkedHashMap<Class<?>, Class<? extends Serializer<?>>>
-            getDefaultKryoSerializerClasses() {
+    getDefaultKryoSerializerClasses() {
         return defaultKryoSerializerClasses;
     }
 
@@ -942,10 +954,10 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
                     && closureCleanerLevel == other.closureCleanerLevel
                     && parallelism == other.parallelism
                     && ((restartStrategyConfiguration == null
-                                    && other.restartStrategyConfiguration == null)
-                            || (null != restartStrategyConfiguration
-                                    && restartStrategyConfiguration.equals(
-                                            other.restartStrategyConfiguration)))
+                    && other.restartStrategyConfiguration == null)
+                    || (null != restartStrategyConfiguration
+                    && restartStrategyConfiguration.equals(
+                    other.restartStrategyConfiguration)))
                     && forceKryo == other.forceKryo
                     && disableGenericTypes == other.disableGenericTypes
                     && objectReuse == other.objectReuse
@@ -954,7 +966,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
                     && Objects.equals(globalJobParameters, other.globalJobParameters)
                     && autoWatermarkInterval == other.autoWatermarkInterval
                     && registeredTypesWithKryoSerializerClasses.equals(
-                            other.registeredTypesWithKryoSerializerClasses)
+                    other.registeredTypesWithKryoSerializerClasses)
                     && defaultKryoSerializerClasses.equals(other.defaultKryoSerializerClasses)
                     && registeredKryoTypes.equals(other.registeredKryoTypes)
                     && registeredPojoTypes.equals(other.registeredPojoTypes)
@@ -1142,23 +1154,35 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
      * @param classLoader a class loader to use when loading classes
      */
     public void configure(ReadableConfig configuration, ClassLoader classLoader) {
+        // 是否启用自动类型注册 默认 true
         configuration
                 .getOptional(PipelineOptions.AUTO_TYPE_REGISTRATION)
                 .ifPresent(b -> this.autoTypeRegistrationEnabled = b);
+
+        // 是否启用 pipeline 自动生成 UID 默认 true
         configuration
                 .getOptional(PipelineOptions.AUTO_GENERATE_UIDS)
                 .ifPresent(b -> this.enableAutoGeneratedUids = b);
+
+        // 自动生成 watermark 间隔 默认 0
         configuration
                 .getOptional(PipelineOptions.AUTO_WATERMARK_INTERVAL)
                 .ifPresent(i -> this.setAutoWatermarkInterval(i.toMillis()));
+
         configuration
                 .getOptional(PipelineOptions.CLOSURE_CLEANER_LEVEL)
                 .ifPresent(this::setClosureCleanerLevel);
+
+        // 是否强制使用 Apache Avro 序列化 POJO 默认 false
         configuration.getOptional(PipelineOptions.FORCE_AVRO).ifPresent(b -> this.forceAvro = b);
+
         configuration
                 .getOptional(PipelineOptions.GENERIC_TYPES)
                 .ifPresent(b -> this.disableGenericTypes = !b);
+
+        // 是否强制使用 Kryo 序列化 POJO 默认 false
         configuration.getOptional(PipelineOptions.FORCE_KRYO).ifPresent(b -> this.forceKryo = b);
+
         configuration
                 .getOptional(PipelineOptions.GLOBAL_JOB_PARAMETERS)
                 .<GlobalJobParameters>map(MapBasedJobParameters::new)
@@ -1175,23 +1199,32 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
                 .getOptional(StateChangelogOptions.MATERIALIZATION_MAX_FAILURES_ALLOWED)
                 .ifPresent(this::setMaterializationMaxAllowedFailures);
 
+        // 程序任务最大并行度 默认 -1
         configuration
                 .getOptional(PipelineOptions.MAX_PARALLELISM)
                 .ifPresent(this::setMaxParallelism);
+
+        // 默认并行度 1
         configuration.getOptional(CoreOptions.DEFAULT_PARALLELISM).ifPresent(this::setParallelism);
+
         configuration
                 .getOptional(PipelineOptions.OBJECT_REUSE)
                 .ifPresent(o -> this.objectReuse = o);
+
         configuration
                 .getOptional(TaskManagerOptions.TASK_CANCELLATION_INTERVAL)
                 .ifPresent(this::setTaskCancellationInterval);
         configuration
                 .getOptional(TaskManagerOptions.TASK_CANCELLATION_TIMEOUT)
                 .ifPresent(this::setTaskCancellationTimeout);
+
         configuration
                 .getOptional(ExecutionOptions.SNAPSHOT_COMPRESSION)
                 .ifPresent(this::setUseSnapshotCompression);
+
+        // 设置重启策略
         RestartStrategies.fromConfiguration(configuration).ifPresent(this::setRestartStrategy);
+
         configuration
                 .getOptional(PipelineOptions.KRYO_DEFAULT_SERIALIZERS)
                 .map(s -> parseKryoSerializersWithExceptionHandling(classLoader, s))
@@ -1207,6 +1240,7 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
                 .map(c -> loadClasses(c, classLoader, "Could not load kryo type to be registered."))
                 .ifPresent(c -> this.registeredKryoTypes = c);
 
+        // 调度类型 默认 default
         configuration
                 .getOptional(JobManagerOptions.SCHEDULER)
                 .ifPresent(
@@ -1224,8 +1258,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
     }
 
     private LinkedHashMap<Class<?>, Class<? extends Serializer<?>>>
-            parseKryoSerializersWithExceptionHandling(
-                    ClassLoader classLoader, List<String> kryoSerializers) {
+    parseKryoSerializersWithExceptionHandling(
+            ClassLoader classLoader, List<String> kryoSerializers) {
         try {
             return parseKryoSerializers(classLoader, kryoSerializers);
         } catch (Exception e) {

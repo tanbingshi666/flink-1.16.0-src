@@ -43,12 +43,13 @@ public class SimpleOperatorFactory<OUT> extends AbstractStreamOperatorFactory<OU
             return null;
         } else if (operator instanceof StreamSource
                 && ((StreamSource) operator).getUserFunction()
-                        instanceof InputFormatSourceFunction) {
+                instanceof InputFormatSourceFunction) {
             return new SimpleInputFormatOperatorFactory<OUT>((StreamSource) operator);
         } else if (operator instanceof StreamSink
                 && ((StreamSink) operator).getUserFunction() instanceof OutputFormatSinkFunction) {
             return new SimpleOutputFormatOperatorFactory<>((StreamSink) operator);
         } else if (operator instanceof AbstractUdfStreamOperator) {
+            // 创建 SimpleUdfStreamOperatorFactory
             return new SimpleUdfStreamOperatorFactory<OUT>((AbstractUdfStreamOperator) operator);
         } else {
             return new SimpleOperatorFactory<>(operator);

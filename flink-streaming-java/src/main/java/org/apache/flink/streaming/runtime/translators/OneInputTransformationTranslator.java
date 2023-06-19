@@ -30,9 +30,9 @@ import java.util.Collection;
  * A {@link TransformationTranslator} for the {@link OneInputTransformation}.
  *
  * @param <IN> The type of the elements in the input {@code Transformation} of the transformation to
- *     translate.
+ *         translate.
  * @param <OUT> The type of the elements that result from the provided {@code
- *     OneInputTransformation}.
+ *         OneInputTransformation}.
  */
 @Internal
 public final class OneInputTransformationTranslator<IN, OUT>
@@ -62,6 +62,7 @@ public final class OneInputTransformationTranslator<IN, OUT>
     @Override
     public Collection<Integer> translateForStreamingInternal(
             final OneInputTransformation<IN, OUT> transformation, final Context context) {
+        // 执行转换
         return translateInternal(
                 transformation,
                 transformation.getOperatorFactory(),

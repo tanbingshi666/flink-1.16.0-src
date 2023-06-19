@@ -137,8 +137,10 @@ public class DataStream<T> {
      * @param environment The StreamExecutionEnvironment
      */
     public DataStream(StreamExecutionEnvironment environment, Transformation<T> transformation) {
+        // 程序执行环境 StreamExecutionEnvironment
         this.environment =
                 Preconditions.checkNotNull(environment, "Execution Environment must not be null.");
+        // 算子 Transformation
         this.transformation =
                 Preconditions.checkNotNull(
                         transformation, "Stream Transformation must not be null.");
@@ -221,6 +223,7 @@ public class DataStream<T> {
      * each other. The DataStreams merged using this operator will be transformed simultaneously.
      *
      * @param streams The DataStreams to union output with.
+     *
      * @return The {@link DataStream}.
      */
     @SafeVarargs
@@ -248,6 +251,7 @@ public class DataStream<T> {
      * with CoFunctions to apply joint transformations.
      *
      * @param dataStream The DataStream with which this stream will be connected.
+     *
      * @return The {@link ConnectedStreams}.
      */
     public <R> ConnectedStreams<T, R> connect(DataStream<R> dataStream) {
@@ -268,7 +272,8 @@ public class DataStream<T> {
      * BroadcastProcessFunction} depending on the current stream being a {@link KeyedStream} or not.
      *
      * @param broadcastStream The broadcast stream with the broadcast state to be connected with
-     *     this stream.
+     *         this stream.
+     *
      * @return The {@link BroadcastConnectedStream}.
      */
     @PublicEvolving
@@ -285,11 +290,17 @@ public class DataStream<T> {
      * states.
      *
      * @param key The KeySelector to be used for extracting the key for partitioning
+     *
      * @return The {@link DataStream} with partitioned state (i.e. KeyedStream)
      */
     public <K> KeyedStream<T, K> keyBy(KeySelector<T, K> key) {
         Preconditions.checkNotNull(key);
-        return new KeyedStream<>(this, clean(key));
+        // 创建并返回 KeyedStream
+        return new KeyedStream<>(
+                // 上游算子 比如 map -> SingleOutputStreamOperator
+                this,
+                clean(key)
+        );
     }
 
     /**
@@ -298,6 +309,7 @@ public class DataStream<T> {
      *
      * @param key The KeySelector to be used for extracting the key for partitioning.
      * @param keyType The type information describing the key type.
+     *
      * @return The {@link DataStream} with partitioned state (i.e. KeyedStream)
      */
     public <K> KeyedStream<T, K> keyBy(KeySelector<T, K> key, TypeInformation<K> keyType) {
@@ -309,9 +321,11 @@ public class DataStream<T> {
     /**
      * Partitions the operator state of a {@link DataStream} by the given key positions.
      *
-     * @deprecated Use {@link DataStream#keyBy(KeySelector)}.
      * @param fields The position of the fields on which the {@link DataStream} will be grouped.
+     *
      * @return The {@link DataStream} with partitioned state (i.e. KeyedStream)
+     *
+     * @deprecated Use {@link DataStream#keyBy(KeySelector)}.
      */
     @Deprecated
     public KeyedStream<T, Tuple> keyBy(int... fields) {
@@ -329,10 +343,12 @@ public class DataStream<T> {
      * {@link DataStream}'s underlying type. A dot can be used to drill down into objects, as in
      * {@code "field1.getInnerField2()" }.
      *
-     * @deprecated Use {@link DataStream#keyBy(KeySelector)}.
      * @param fields One or more field expressions on which the state of the {@link DataStream}
-     *     operators will be partitioned.
+     *         operators will be partitioned.
+     *
      * @return The {@link DataStream} with partitioned state (i.e. KeyedStream)
+     *
+     * @deprecated Use {@link DataStream#keyBy(KeySelector)}.
      */
     @Deprecated
     public KeyedStream<T, Tuple> keyBy(String... fields) {
@@ -351,15 +367,17 @@ public class DataStream<T> {
      *
      * <p>Note: This method works only on single field keys.
      *
-     * @deprecated use {@link DataStream#partitionCustom(Partitioner, KeySelector)}.
      * @param partitioner The partitioner to assign partitions to keys.
      * @param field The field index on which the DataStream is partitioned.
+     *
      * @return The partitioned DataStream.
+     *
+     * @deprecated use {@link DataStream#partitionCustom(Partitioner, KeySelector)}.
      */
     @Deprecated
     public <K> DataStream<T> partitionCustom(Partitioner<K> partitioner, int field) {
         Keys.ExpressionKeys<T> outExpressionKeys =
-                new Keys.ExpressionKeys<>(new int[] {field}, getType());
+                new Keys.ExpressionKeys<>(new int[]{field}, getType());
         return partitionCustom(partitioner, outExpressionKeys);
     }
 
@@ -369,15 +387,17 @@ public class DataStream<T> {
      *
      * <p>Note: This method works only on single field keys.
      *
-     * @deprecated use {@link DataStream#partitionCustom(Partitioner, KeySelector)}.
      * @param partitioner The partitioner to assign partitions to keys.
      * @param field The expression for the field on which the DataStream is partitioned.
+     *
      * @return The partitioned DataStream.
+     *
+     * @deprecated use {@link DataStream#partitionCustom(Partitioner, KeySelector)}.
      */
     @Deprecated
     public <K> DataStream<T> partitionCustom(Partitioner<K> partitioner, String field) {
         Keys.ExpressionKeys<T> outExpressionKeys =
-                new Keys.ExpressionKeys<>(new String[] {field}, getType());
+                new Keys.ExpressionKeys<>(new String[]{field}, getType());
         return partitionCustom(partitioner, outExpressionKeys);
     }
 
@@ -391,7 +411,9 @@ public class DataStream<T> {
      *
      * @param partitioner The partitioner to assign partitions to keys.
      * @param keySelector The KeySelector with which the DataStream is partitioned.
+     *
      * @return The partitioned DataStream.
+     *
      * @see KeySelector
      */
     public <K> DataStream<T> partitionCustom(
@@ -427,8 +449,9 @@ public class DataStream<T> {
      * descriptors which can be used to store the element of the stream.
      *
      * @param broadcastStateDescriptors the descriptors of the broadcast states to create.
+     *
      * @return A {@link BroadcastStream} which can be used in the {@link #connect(BroadcastStream)}
-     *     to create a {@link BroadcastConnectedStream} for further processing of the elements.
+     *         to create a {@link BroadcastConnectedStream} for further processing of the elements.
      */
     @PublicEvolving
     public BroadcastStream<T> broadcast(
@@ -552,6 +575,7 @@ public class DataStream<T> {
      * in the set time, the stream terminates.
      *
      * @param maxWaitTimeMillis Number of milliseconds to wait between inputs before shutting down
+     *
      * @return The iterative data stream created.
      */
     @PublicEvolving
@@ -567,14 +591,17 @@ public class DataStream<T> {
      *
      * @param mapper The MapFunction that is called for each element of the DataStream.
      * @param <R> output type
+     *
      * @return The transformed {@link DataStream}.
      */
     public <R> SingleOutputStreamOperator<R> map(MapFunction<T, R> mapper) {
 
+        // 获取 MapFunction 输出数据类型
         TypeInformation<R> outType =
                 TypeExtractor.getMapReturnTypes(
                         clean(mapper), getType(), Utils.getCallLocationName(), true);
 
+        // 往下追
         return map(mapper, outType);
     }
 
@@ -587,11 +614,17 @@ public class DataStream<T> {
      * @param mapper The MapFunction that is called for each element of the DataStream.
      * @param outputType {@link TypeInformation} for the result type of the function.
      * @param <R> output type
+     *
      * @return The transformed {@link DataStream}.
      */
     public <R> SingleOutputStreamOperator<R> map(
             MapFunction<T, R> mapper, TypeInformation<R> outputType) {
-        return transform("Map", outputType, new StreamMap<>(clean(mapper)));
+        // 往下追
+        return transform(
+                "Map",
+                outputType,
+                // 创建 MapFunction 封装类 StreamMap
+                new StreamMap<>(clean(mapper)));
     }
 
     /**
@@ -603,6 +636,7 @@ public class DataStream<T> {
      *
      * @param flatMapper The FlatMapFunction that is called for each element of the DataStream
      * @param <R> output type
+     *
      * @return The transformed {@link DataStream}.
      */
     public <R> SingleOutputStreamOperator<R> flatMap(FlatMapFunction<T, R> flatMapper) {
@@ -624,6 +658,7 @@ public class DataStream<T> {
      * @param flatMapper The FlatMapFunction that is called for each element of the DataStream
      * @param outputType {@link TypeInformation} for the result type of the function.
      * @param <R> output type
+     *
      * @return The transformed {@link DataStream}.
      */
     public <R> SingleOutputStreamOperator<R> flatMap(
@@ -639,8 +674,9 @@ public class DataStream<T> {
      * more output elements.
      *
      * @param processFunction The {@link ProcessFunction} that is called for each element in the
-     *     stream.
+     *         stream.
      * @param <R> The type of elements emitted by the {@code ProcessFunction}.
+     *
      * @return The transformed {@link DataStream}.
      */
     @PublicEvolving
@@ -668,9 +704,10 @@ public class DataStream<T> {
      * more output elements.
      *
      * @param processFunction The {@link ProcessFunction} that is called for each element in the
-     *     stream.
+     *         stream.
      * @param outputType {@link TypeInformation} for the result type of the function.
      * @param <R> The type of elements emitted by the {@code ProcessFunction}.
+     *
      * @return The transformed {@link DataStream}.
      */
     @Internal
@@ -690,6 +727,7 @@ public class DataStream<T> {
      * the {@link org.apache.flink.api.common.functions.RichFunction} interface.
      *
      * @param filter The FilterFunction that is called for each element of the DataStream.
+     *
      * @return The filtered DataStream.
      */
     public SingleOutputStreamOperator<T> filter(FilterFunction<T> filter) {
@@ -703,8 +741,10 @@ public class DataStream<T> {
      * <p>The transformation projects each Tuple of the DataSet onto a (sub)set of fields.
      *
      * @param fieldIndexes The field indexes of the input tuples that are retained. The order of
-     *     fields in the output tuple corresponds to the order of field indexes.
+     *         fields in the output tuple corresponds to the order of field indexes.
+     *
      * @return The projected DataStream
+     *
      * @see Tuple
      * @see DataStream
      */
@@ -743,9 +783,10 @@ public class DataStream<T> {
      * org.apache.flink.streaming.api.environment.StreamExecutionEnvironment#setStreamTimeCharacteristic(org.apache.flink.streaming.api.TimeCharacteristic)}
      *
      * @param size The size of the window.
+     *
      * @deprecated Please use {@link #windowAll(WindowAssigner)} with either {@link
-     *     TumblingEventTimeWindows} or {@link TumblingProcessingTimeWindows}. For more information,
-     *     see the deprecation notice on {@link TimeCharacteristic}
+     *         TumblingEventTimeWindows} or {@link TumblingProcessingTimeWindows}. For more information,
+     *         see the deprecation notice on {@link TimeCharacteristic}
      */
     @Deprecated
     public AllWindowedStream<T, TimeWindow> timeWindowAll(Time size) {
@@ -768,9 +809,10 @@ public class DataStream<T> {
      * the same operator instance.
      *
      * @param size The size of the window.
+     *
      * @deprecated Please use {@link #windowAll(WindowAssigner)} with either {@link
-     *     SlidingEventTimeWindows} or {@link SlidingProcessingTimeWindows}. For more information,
-     *     see the deprecation notice on {@link TimeCharacteristic}
+     *         SlidingEventTimeWindows} or {@link SlidingProcessingTimeWindows}. For more information,
+     *         see the deprecation notice on {@link TimeCharacteristic}
      */
     @Deprecated
     public AllWindowedStream<T, TimeWindow> timeWindowAll(Time size, Time slide) {
@@ -822,6 +864,7 @@ public class DataStream<T> {
      * the same operator instance.
      *
      * @param assigner The {@code WindowAssigner} that assigns elements to windows.
+     *
      * @return The trigger windows data stream.
      */
     @PublicEvolving
@@ -852,6 +895,7 @@ public class DataStream<T> {
      * org.apache.flink.api.common.eventtime.WatermarkStrategy} class.
      *
      * @param watermarkStrategy The strategy to generate watermarks based on event timestamps.
+     *
      * @return The stream after the transformation, with assigned timestamps and watermarks.
      */
     public SingleOutputStreamOperator<T> assignTimestampsAndWatermarks(
@@ -961,6 +1005,7 @@ public class DataStream<T> {
      * worker.
      *
      * @param sinkIdentifier The string to prefix the output with.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -978,6 +1023,7 @@ public class DataStream<T> {
      * worker.
      *
      * @param sinkIdentifier The string to prefix the output with.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -992,10 +1038,12 @@ public class DataStream<T> {
      * <p>For every element of the DataStream the result of {@link Object#toString()} is written.
      *
      * @param path The path pointing to the location the text file is written to.
+     *
      * @return The closed DataStream.
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @Deprecated
     @PublicEvolving
@@ -1010,11 +1058,13 @@ public class DataStream<T> {
      *
      * @param path The path pointing to the location the text file is written to
      * @param writeMode Controls the behavior for existing files. Options are NO_OVERWRITE and
-     *     OVERWRITE.
+     *         OVERWRITE.
+     *
      * @return The closed DataStream.
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @Deprecated
     @PublicEvolving
@@ -1031,10 +1081,12 @@ public class DataStream<T> {
      * written. This method can only be used on data streams of tuples.
      *
      * @param path the path pointing to the location the text file is written to
+     *
      * @return the closed DataStream
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @Deprecated
     @PublicEvolving
@@ -1054,11 +1106,13 @@ public class DataStream<T> {
      *
      * @param path the path pointing to the location the text file is written to
      * @param writeMode Controls the behavior for existing files. Options are NO_OVERWRITE and
-     *     OVERWRITE.
+     *         OVERWRITE.
+     *
      * @return the closed DataStream
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @Deprecated
     @PublicEvolving
@@ -1079,13 +1133,15 @@ public class DataStream<T> {
      *
      * @param path the path pointing to the location the text file is written to
      * @param writeMode Controls the behavior for existing files. Options are NO_OVERWRITE and
-     *     OVERWRITE.
+     *         OVERWRITE.
      * @param rowDelimiter the delimiter for two rows
      * @param fieldDelimiter the delimiter for two fields
+     *
      * @return the closed DataStream
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @SuppressWarnings("unchecked")
     @Deprecated
@@ -1112,6 +1168,7 @@ public class DataStream<T> {
      * @param hostName host of the socket
      * @param port port of the socket
      * @param schema schema for serialization
+     *
      * @return the closed DataStream
      */
     @PublicEvolving
@@ -1132,10 +1189,12 @@ public class DataStream<T> {
      * org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} is recommended.
      *
      * @param format The output format
+     *
      * @return The closed DataStream
+     *
      * @deprecated Please use the {@link
-     *     org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
-     *     using the {@link #addSink(SinkFunction)} method.
+     *         org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly
+     *         using the {@link #addSink(SinkFunction)} method.
      */
     @Deprecated
     @PublicEvolving
@@ -1151,7 +1210,9 @@ public class DataStream<T> {
      * @param outTypeInfo the output type of the operator
      * @param operator the object containing the transformation logic
      * @param <R> type of the return stream
+     *
      * @return the data stream constructed
+     *
      * @see #transform(String, TypeInformation, OneInputStreamOperatorFactory)
      */
     @PublicEvolving
@@ -1159,8 +1220,12 @@ public class DataStream<T> {
             String operatorName,
             TypeInformation<R> outTypeInfo,
             OneInputStreamOperator<T, R> operator) {
-
-        return doTransform(operatorName, outTypeInfo, SimpleOperatorFactory.of(operator));
+        // 往下追
+        return doTransform(
+                operatorName,
+                outTypeInfo,
+                // 根据算子类型创建对应的工厂 比如 MapFunction -> SimpleUdfStreamOperatorFactory
+                SimpleOperatorFactory.of(operator));
     }
 
     /**
@@ -1174,6 +1239,7 @@ public class DataStream<T> {
      * @param outTypeInfo the output type of the operator
      * @param operatorFactory the factory for the operator.
      * @param <R> type of the return stream
+     *
      * @return the data stream constructed.
      */
     @PublicEvolving
@@ -1193,8 +1259,10 @@ public class DataStream<T> {
         // read the output type of the input Transform to coax out errors about MissingTypeInfo
         transformation.getOutputType();
 
+        // 创建 OneInputTransformation
         OneInputTransformation<T, R> resultTransform =
                 new OneInputTransformation<>(
+                        // 上游算子 比如 KafkaSource
                         this.transformation,
                         operatorName,
                         operatorFactory,
@@ -1202,11 +1270,14 @@ public class DataStream<T> {
                         environment.getParallelism());
 
         @SuppressWarnings({"unchecked", "rawtypes"})
+        // 创建 SingleOutputStreamOperator
         SingleOutputStreamOperator<R> returnStream =
                 new SingleOutputStreamOperator(environment, resultTransform);
 
+        // 执行环境的 transformations 容器添加算子
         getExecutionEnvironment().addOperator(resultTransform);
 
+        // 返回 SingleOutputStreamOperator
         return returnStream;
     }
 
@@ -1214,6 +1285,7 @@ public class DataStream<T> {
      * Internal function for setting the partitioner for the DataStream.
      *
      * @param partitioner Partitioner to set.
+     *
      * @return The modified DataStream.
      */
     protected DataStream<T> setConnectionType(StreamPartitioner<T> partitioner) {
@@ -1227,6 +1299,7 @@ public class DataStream<T> {
      * the {@link StreamExecutionEnvironment#execute()} method is called.
      *
      * @param sinkFunction The object containing the sink's invoke function.
+     *
      * @return The closed DataStream.
      */
     public DataStreamSink<T> addSink(SinkFunction<T> sinkFunction) {
@@ -1238,7 +1311,7 @@ public class DataStream<T> {
         if (sinkFunction instanceof InputTypeConfigurable) {
             ((InputTypeConfigurable) sinkFunction).setInputType(getType(), getExecutionConfig());
         }
-
+        // 添加 SinkFunction
         return DataStreamSink.forSinkFunction(this, clean(sinkFunction));
     }
 
@@ -1247,6 +1320,7 @@ public class DataStream<T> {
      * executed once the {@link StreamExecutionEnvironment#execute()} method is called.
      *
      * @param sink The user defined sink.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -1262,6 +1336,7 @@ public class DataStream<T> {
      * before taking the snapshot.
      *
      * @param sink The user defined sink.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -1279,6 +1354,7 @@ public class DataStream<T> {
      * executed once the {@link StreamExecutionEnvironment#execute()} method is called.
      *
      * @param sink The user defined sink.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -1295,6 +1371,7 @@ public class DataStream<T> {
      *
      * @param customSinkOperatorUidHashes operator hashes to support state binding
      * @param sink The user defined sink.
+     *
      * @return The closed DataStream.
      */
     @PublicEvolving
@@ -1358,7 +1435,7 @@ public class DataStream<T> {
         Preconditions.checkState(limit > 0, "Limit must be greater than 0");
 
         try (ClientAndIterator<T> clientAndIterator =
-                executeAndCollectWithClient(jobExecutionName)) {
+                     executeAndCollectWithClient(jobExecutionName)) {
             List<T> results = new ArrayList<>(limit);
             while (limit > 0 && clientAndIterator.iterator.hasNext()) {
                 results.add(clientAndIterator.iterator.next());

@@ -172,21 +172,27 @@ public abstract class Transformation<T> {
 
     private Optional<SlotSharingGroup> slotSharingGroup;
 
-    @Nullable private String coLocationGroupKey;
+    @Nullable
+    private String coLocationGroupKey;
 
     /**
      * Creates a new {@code Transformation} with the given name, output type and parallelism.
      *
      * @param name The name of the {@code Transformation}, this will be shown in Visualizations and
-     *     the Log
+     *         the Log
      * @param outputType The output type of this {@code Transformation}
      * @param parallelism The parallelism of this {@code Transformation}
      */
     public Transformation(String name, TypeInformation<T> outputType, int parallelism) {
+        // 原子 Integer 生成累加
         this.id = getNewNodeId();
+        // 算子名称
         this.name = Preconditions.checkNotNull(name);
+        // 算子输出数据类型
         this.outputType = outputType;
+        // 算子并行度
         this.parallelism = parallelism;
+        // slot 共享组
         this.slotSharingGroup = Optional.empty();
     }
 
@@ -283,10 +289,11 @@ public abstract class Transformation<T> {
      * Declares that this transformation contains certain operator scope managed memory use case.
      *
      * @param managedMemoryUseCase The use case that this transformation declares needing managed
-     *     memory for.
+     *         memory for.
      * @param weight Use-case-specific weights for this transformation. Used for sharing managed
-     *     memory across transformations for OPERATOR scope use cases. Check the individual {@link
-     *     ManagedMemoryUseCase} for the specific weight definition.
+     *         memory across transformations for OPERATOR scope use cases. Check the individual {@link
+     *         ManagedMemoryUseCase} for the specific weight definition.
+     *
      * @return The previous weight, if exist.
      */
     public Optional<Integer> declareManagedMemoryUseCaseAtOperatorScope(
@@ -306,7 +313,7 @@ public abstract class Transformation<T> {
      * Declares that this transformation contains certain slot scope managed memory use case.
      *
      * @param managedMemoryUseCase The use case that this transformation declares needing managed
-     *     memory for.
+     *         memory for.
      */
     public void declareManagedMemoryUseCaseAtSlotScope(ManagedMemoryUseCase managedMemoryUseCase) {
         Preconditions.checkNotNull(managedMemoryUseCase);
@@ -357,7 +364,7 @@ public abstract class Transformation<T> {
      * mapping from states to their target operator.
      *
      * @param uidHash The user provided hash for this operator. This will become the JobVertexID,
-     *     which is shown in the logs and web ui.
+     *         which is shown in the logs and web ui.
      */
     public void setUidHash(String uidHash) {
 
@@ -475,6 +482,7 @@ public abstract class Transformation<T> {
      * type information.
      *
      * @param outputType The type information to fill in.
+     *
      * @throws IllegalStateException Thrown, if the type information has been accessed before.
      */
     public void setOutputType(TypeInformation<T> outputType) {

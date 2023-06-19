@@ -58,8 +58,11 @@ public class ContextEnvironment extends ExecutionEnvironment {
             final ClassLoader userCodeClassLoader,
             final boolean enforceSingleJobExecution,
             final boolean suppressSysout) {
+        // 往下追
         super(executorServiceLoader, configuration, userCodeClassLoader);
+        // false
         this.suppressSysout = suppressSysout;
+        // false
         this.enforceSingleJobExecution = enforceSingleJobExecution;
 
         this.jobCounter = 0;
@@ -150,8 +153,8 @@ public class ContextEnvironment extends ExecutionEnvironment {
     public String toString() {
         return "Context Environment (parallelism = "
                 + (getParallelism() == ExecutionConfig.PARALLELISM_DEFAULT
-                        ? "default"
-                        : getParallelism())
+                ? "default"
+                : getParallelism())
                 + ")";
     }
 
@@ -163,14 +166,17 @@ public class ContextEnvironment extends ExecutionEnvironment {
             final ClassLoader userCodeClassLoader,
             final boolean enforceSingleJobExecution,
             final boolean suppressSysout) {
+
+        // 创建 ExecutionEnvironmentFactory
         ExecutionEnvironmentFactory factory =
-                () ->
+                () ->   // 创建 ContextEnvironment
                         new ContextEnvironment(
                                 executorServiceLoader,
                                 configuration,
                                 userCodeClassLoader,
                                 enforceSingleJobExecution,
                                 suppressSysout);
+        // 当前线程 ThreadLocal 设置执行上下文
         initializeContextEnvironment(factory);
     }
 

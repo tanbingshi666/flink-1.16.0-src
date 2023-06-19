@@ -55,6 +55,7 @@ public abstract class AbstractUdfStreamOperator<OUT, F extends Function>
     protected final F userFunction;
 
     public AbstractUdfStreamOperator(F userFunction) {
+        // 用户自定义 Function 比如 MapFunction
         this.userFunction = requireNonNull(userFunction);
         checkUdfCheckpointingPreconditions();
     }

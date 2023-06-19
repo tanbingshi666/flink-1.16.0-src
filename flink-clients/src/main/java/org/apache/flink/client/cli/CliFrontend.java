@@ -113,6 +113,7 @@ public class CliFrontend {
     private final ClusterClientServiceLoader clusterClientServiceLoader;
 
     public CliFrontend(Configuration configuration, List<CustomCommandLine> customCommandLines) {
+        // 往下追
         this(configuration, new DefaultClusterClientServiceLoader(), customCommandLines);
     }
 
@@ -120,15 +121,21 @@ public class CliFrontend {
             Configuration configuration,
             ClusterClientServiceLoader clusterClientServiceLoader,
             List<CustomCommandLine> customCommandLines) {
+        // flink-conf.yaml 内容
         this.configuration = checkNotNull(configuration);
         this.customCommandLines = checkNotNull(customCommandLines);
         this.clusterClientServiceLoader = checkNotNull(clusterClientServiceLoader);
 
+        // 加载所有 FileSystemFactory 的子类并缓存
         FileSystem.initialize(
-                configuration, PluginUtils.createPluginManagerFromRootFolder(configuration));
+                configuration,
+                // 创建插件管理器 默认 DefaultPluginManager
+                PluginUtils.createPluginManagerFromRootFolder(configuration));
 
         this.customCommandLineOptions = new Options();
 
+        // 每个自定义命令行客户端解析器添加对应的特有参数以及运行参数
+        // 比如 GenericCLI
         for (CustomCommandLine customCommandLine : customCommandLines) {
             customCommandLine.addGeneralOptions(customCommandLineOptions);
             customCommandLine.addRunOptions(customCommandLineOptions);
@@ -215,7 +222,9 @@ public class CliFrontend {
     protected void run(String[] args) throws Exception {
         LOG.info("Running 'run' command.");
 
+        // 获取命令行参数 option (枚举 option 在 CliFrontendParser 类)
         final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+        // 入口参数解析匹配 option
         final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
         // evaluate help flag
@@ -224,19 +233,26 @@ public class CliFrontend {
             return;
         }
 
+        // 一般 flink-on-yarn 执行命令 bin/flink run -t yarn-application XXX
+        // -t 匹配 GenericCLI 并返回
         final CustomCommandLine activeCommandLine =
                 validateAndGetActiveCommandLine(checkNotNull(commandLine));
 
+        // 创建运行程序参数 (也即运行参数解析 比如 -class 程序运行类 -Class 程序依赖jar)
         final ProgramOptions programOptions = ProgramOptions.create(commandLine);
 
+        // 获取程序任务jar内部的依赖包
         final List<URL> jobJars = getJobJarAndDependencies(programOptions);
 
+        // 合并 flink-conf.yaml 和入口参数
         final Configuration effectiveConfiguration =
                 getEffectiveConfiguration(activeCommandLine, commandLine, programOptions, jobJars);
 
         LOG.debug("Effective executor configuration: {}", effectiveConfiguration);
 
+        // 创建 PackagedProgram (真正执行程序包装类)
         try (PackagedProgram program = getPackagedProgram(programOptions, effectiveConfiguration)) {
+            // 执行程序
             executeProgram(effectiveConfiguration, program);
         }
     }
@@ -262,6 +278,7 @@ public class CliFrontend {
         PackagedProgram program;
         try {
             LOG.info("Building program from JAR file");
+            // 构建 PackagedProgram
             program = buildProgram(programOptions, effectiveConfiguration);
         } catch (FileNotFoundException e) {
             throw new CliArgsException(
@@ -843,8 +860,13 @@ public class CliFrontend {
 
     protected void executeProgram(final Configuration configuration, final PackagedProgram program)
             throws ProgramInvocationException {
+        // 执行程序
         ClientUtils.executeProgram(
-                new DefaultExecutorServiceLoader(), configuration, program, false, false);
+                new DefaultExecutorServiceLoader(),
+                configuration,
+                program,
+                false,
+                false);
     }
 
     /**
@@ -875,6 +897,7 @@ public class CliFrontend {
         String entryPointClass = runOptions.getEntryPointClassName();
         File jarFile = jarFilePath != null ? getJarFile(jarFilePath) : null;
 
+        // 构建 PackagedProgram
         return PackagedProgram.newBuilder()
                 .setJarFile(jarFile)
                 .setUserClassPaths(classpaths)
@@ -889,7 +912,9 @@ public class CliFrontend {
      * Gets the JAR file from the path.
      *
      * @param jarFilePath The path of JAR file
+     *
      * @return The JAR file
+     *
      * @throws FileNotFoundException The JAR file does not exist.
      */
     private File getJarFile(String jarFilePath) throws FileNotFoundException {
@@ -911,6 +936,7 @@ public class CliFrontend {
      * Displays an exception message for incorrect command line arguments.
      *
      * @param e The exception to display.
+     *
      * @return The return code for the process.
      */
     private static int handleArgException(CliArgsException e) {
@@ -926,6 +952,7 @@ public class CliFrontend {
      * Displays an optional exception message for incorrect program parametrization.
      *
      * @param e The exception to display.
+     *
      * @return The return code for the process.
      */
     private static int handleParametrizationException(ProgramParametrizationException e) {
@@ -951,6 +978,7 @@ public class CliFrontend {
      * Displays an exception message.
      *
      * @param t The exception to display.
+     *
      * @return The return code for the process.
      */
     private static int handleError(Throwable t) {
@@ -1007,6 +1035,7 @@ public class CliFrontend {
      * @param commandLine containing the parsed command line options
      * @param clusterAction the cluster action to run against the retrieved {@link ClusterClient}.
      * @param <ClusterID> type of the cluster id
+     *
      * @throws FlinkException if something goes wrong
      */
     private <ClusterID> void runClusterAction(
@@ -1030,9 +1059,9 @@ public class CliFrontend {
         }
 
         try (final ClusterDescriptor<ClusterID> clusterDescriptor =
-                clusterClientFactory.createClusterDescriptor(effectiveConfiguration)) {
+                     clusterClientFactory.createClusterDescriptor(effectiveConfiguration)) {
             try (final ClusterClient<ClusterID> clusterClient =
-                    clusterDescriptor.retrieve(clusterId).getClusterClient()) {
+                         clusterDescriptor.retrieve(clusterId).getClusterClient()) {
                 clusterAction.runAction(clusterClient, effectiveConfiguration);
             }
         }
@@ -1052,6 +1081,7 @@ public class CliFrontend {
          *
          * @param clusterClient to run the cluster action against
          * @param effectiveConfiguration Flink effective configuration
+         *
          * @throws FlinkException if something goes wrong
          */
         void runAction(ClusterClient<ClusterID> clusterClient, Configuration effectiveConfiguration)
@@ -1066,6 +1096,7 @@ public class CliFrontend {
      * Parses the command line arguments and starts the requested action.
      *
      * @param args command line arguments of the client.
+     *
      * @return The return code of the program
      */
     public int parseAndRun(String[] args) {
@@ -1078,6 +1109,7 @@ public class CliFrontend {
         }
 
         // get action
+        // bin/flink run XXX
         String action = args[0];
 
         // remove action from parameters
@@ -1086,6 +1118,7 @@ public class CliFrontend {
         try {
             // do action
             switch (action) {
+                // 运行任务
                 case ACTION_RUN:
                     run(params);
                     return 0;
@@ -1150,22 +1183,34 @@ public class CliFrontend {
         EnvironmentInformation.logEnvironmentInfo(LOG, "Command Line Client", args);
 
         // 1. find the configuration directory
+        // 找到 conf 目录
         final String configurationDirectory = getConfigurationDirectoryFromEnv();
 
         // 2. load the global configuration
+        // 加载 conf/flink-conf.yaml 文件内容
         final Configuration configuration =
                 GlobalConfiguration.loadConfiguration(configurationDirectory);
 
         // 3. load the custom command lines
+        // 加载自定义命令行
+        /**
+         * 1 创建通用的命令行客户端解析器 GenericCLI (一般是 yarn-per-job/yarn-application)
+         * 2 创建 yarn-session 命令行客户端解析器 FlinkYarnSessionCli
+         * 3 创建默认的命令行客户端解析器 DefaultCLI
+         */
         final List<CustomCommandLine> customCommandLines =
                 loadCustomCommandLines(configuration, configurationDirectory);
 
         int retCode = 31;
         try {
+            // 创建 CliFrontend
             final CliFrontend cli = new CliFrontend(configuration, customCommandLines);
 
             SecurityUtils.install(new SecurityConfiguration(cli.configuration));
-            retCode = SecurityUtils.getInstalledContext().runSecured(() -> cli.parseAndRun(args));
+            retCode = SecurityUtils.getInstalledContext().runSecured(() ->
+                    // 解析入口参数并运行任务
+                    cli.parseAndRun(args)
+            );
         } catch (Throwable t) {
             final Throwable strippedThrowable =
                     ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
@@ -1224,12 +1269,14 @@ public class CliFrontend {
     public static List<CustomCommandLine> loadCustomCommandLines(
             Configuration configuration, String configurationDirectory) {
         List<CustomCommandLine> customCommandLines = new ArrayList<>();
+        // 1 创建通用的命令行客户端解析器 GenericCLI (一般是 yarn-per-job/yarn-application)
         customCommandLines.add(new GenericCLI(configuration, configurationDirectory));
 
         //	Command line interface of the YARN session, with a special initialization here
         //	to prefix all options with y/yarn.
         final String flinkYarnSessionCLI = "org.apache.flink.yarn.cli.FlinkYarnSessionCli";
         try {
+            // 2 创建 yarn-session 命令行客户端解析器 FlinkYarnSessionCli
             customCommandLines.add(
                     loadCustomCommandLine(
                             flinkYarnSessionCLI,
@@ -1247,9 +1294,9 @@ public class CliFrontend {
             }
         }
 
-        //	Tips: DefaultCLI must be added at last, because getActiveCustomCommandLine(..) will get
-        // the
-        //	      active CustomCommandLine in order and DefaultCLI isActive always return true.
+        // Tips: DefaultCLI must be added at last, because getActiveCustomCommandLine(..) will get
+        // the active CustomCommandLine in order and DefaultCLI isActive always return true.
+        // 3 创建默认的命令行客户端解析器 DefaultCLI
         customCommandLines.add(new DefaultCLI());
 
         return customCommandLines;
@@ -1263,6 +1310,7 @@ public class CliFrontend {
      * Gets the custom command-line for the arguments.
      *
      * @param commandLine The input to the command-line.
+     *
      * @return custom command-line which is active (may only be one at a time)
      */
     public CustomCommandLine validateAndGetActiveCommandLine(CommandLine commandLine) {
@@ -1305,6 +1353,7 @@ public class CliFrontend {
      * Get client timeout from command line via effective configuration.
      *
      * @param effectiveConfiguration Flink effective configuration.
+     *
      * @return client timeout with Duration type
      */
     private Duration getClientTimeout(Configuration effectiveConfiguration) {
@@ -1315,6 +1364,7 @@ public class CliFrontend {
      * Get default parallelism from command line via effective configuration.
      *
      * @param effectiveConfiguration Flink effective configuration.
+     *
      * @return default parallelism.
      */
     private int getDefaultParallelism(Configuration effectiveConfiguration) {

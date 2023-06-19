@@ -180,8 +180,8 @@ public class StreamGraphGenerator {
 
     @SuppressWarnings("rawtypes")
     private static final Map<
-                    Class<? extends Transformation>,
-                    TransformationTranslator<?, ? extends Transformation>>
+            Class<? extends Transformation>,
+            TransformationTranslator<?, ? extends Transformation>>
             translatorMap;
 
     static {
@@ -237,11 +237,17 @@ public class StreamGraphGenerator {
             ExecutionConfig executionConfig,
             CheckpointConfig checkpointConfig,
             ReadableConfig configuration) {
+        // 程序算子集合
         this.transformations = checkNotNull(transformations);
+        // 程序执行配置 比如并行度
         this.executionConfig = checkNotNull(executionConfig);
+        // checkpoint 配置
         this.checkpointConfig = new CheckpointConfig(checkpointConfig);
+        // 全局配置参数
         this.configuration = checkNotNull(configuration);
+        // checkpoint 存储配置
         this.checkpointStorage = this.checkpointConfig.getCheckpointStorage();
+        // 程序是否从指定 savepoint 恢复 配置参数 key = execution.savepoint.path
         this.savepointRestoreSettings = SavepointRestoreSettings.fromConfiguration(configuration);
     }
 
@@ -306,16 +312,22 @@ public class StreamGraphGenerator {
     }
 
     public StreamGraph generate() {
+        // 创建 StreamGraph
         streamGraph = new StreamGraph(executionConfig, checkpointConfig, savepointRestoreSettings);
+        // 是否 Task 完成之后开启 checkpoint 默认 true
         streamGraph.setEnableCheckpointsAfterTasksFinish(
                 configuration.get(
                         ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH));
+        // 程序执行模式 默认 STREAMING
         shouldExecuteInBatchMode = shouldExecuteInBatchMode();
+        // 配置 StreamGraph
         configureStreamGraph(streamGraph);
 
         alreadyTransformed = new IdentityHashMap<>();
 
+        // 遍历程序算子执行转换 StreamNode
         for (Transformation<?> transformation : transformations) {
+            // 一个算子转换成一个 StreamNode
             transform(transformation);
         }
 
@@ -331,6 +343,7 @@ public class StreamGraphGenerator {
             }
         }
 
+        // 至此程序算子转换 StreamGraph 完成
         final StreamGraph builtStreamGraph = streamGraph;
 
         alreadyTransformed.clear();
@@ -490,7 +503,7 @@ public class StreamGraphGenerator {
                         transformation ->
                                 isUnboundedSource(transformation)
                                         || transformation.getTransitivePredecessors().stream()
-                                                .anyMatch(this::isUnboundedSource));
+                                        .anyMatch(this::isUnboundedSource));
     }
 
     private boolean isUnboundedSource(final Transformation<?> transformation) {
@@ -553,12 +566,15 @@ public class StreamGraphGenerator {
         transform.getOutputType();
 
         @SuppressWarnings("unchecked")
+        // 根据程序算子类型获取对应的算子转换器
+        // 比如 Map算子(OneInputTransformation) -> OneInputTransformationTranslator
         final TransformationTranslator<?, Transformation<?>> translator =
                 (TransformationTranslator<?, Transformation<?>>)
                         translatorMap.get(transform.getClass());
 
         Collection<Integer> transformedIds;
         if (translator != null) {
+            // 执行算子转换 StreamNode
             transformedIds = translate(translator, transform);
         } else {
             transformedIds = legacyTransform(transform);
@@ -567,6 +583,8 @@ public class StreamGraphGenerator {
         // need this check because the iterate transformation adds itself before
         // transforming the feedback edges
         if (!alreadyTransformed.containsKey(transform)) {
+            // 缓冲转换后的算子
+            // 比如 Source -> 1  Map -> 2
             alreadyTransformed.put(transform, transformedIds);
         }
 
@@ -808,6 +826,8 @@ public class StreamGraphGenerator {
         checkNotNull(translator);
         checkNotNull(transform);
 
+        // 获取当前程序算子的父类输入算子
+        // 比如 Map 算子的父类输入算子是 Source 算子 -> 将 Source 算子转换为 StreamNode 添加到 StreamGraph 中
         final List<Collection<Integer>> allInputIds = getParentInputIds(transform.getInputs());
 
         // the recursive call might have already transformed this
@@ -824,11 +844,16 @@ public class StreamGraphGenerator {
                                 .flatMap(Collection::stream)
                                 .collect(Collectors.toList()));
 
+        // 创建 ContextImpl
         final TransformationTranslator.Context context =
                 new ContextImpl(this, streamGraph, slotSharingGroup, configuration);
 
         return shouldExecuteInBatchMode
+                // 执行批式算子转换
                 ? translator.translateForBatch(transform, context)
+                // 执行流式算子转换 StreamNode
+                // 如果是非 Sink 算子 调用 SimpleTransformationTranslator
+                // 否则调用 SinkTransformationTranslator
                 : translator.translateForStreaming(transform, context);
     }
 
@@ -839,8 +864,9 @@ public class StreamGraphGenerator {
      * <p>Parent transformations will be translated if they are not already translated.
      *
      * @param parentTransformations the transformations whose node ids to return.
+     *
      * @return the nodeIds per transformation or an empty list if the {@code parentTransformations}
-     *     are empty.
+     *         are empty.
      */
     private List<Collection<Integer>> getParentInputIds(
             @Nullable final Collection<Transformation<?>> parentTransformations) {
