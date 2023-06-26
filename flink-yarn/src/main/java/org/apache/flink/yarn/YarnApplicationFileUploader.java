@@ -99,6 +99,8 @@ class YarnApplicationFileUploader implements AutoCloseable {
         this.applicationId = checkNotNull(applicationId);
 
         this.localResources = new HashMap<>();
+        // 创建程序任务上传到 HDFS 路径
+        // /user/hdfs/.flink/${ApplicationId}
         this.applicationDir = getApplicationDir(applicationId);
         checkArgument(
                 !isUsrLibDirIncludedInProvidedLib(providedLibDirs),

@@ -170,17 +170,23 @@ public class CliFrontend {
     protected void runApplication(String[] args) throws Exception {
         LOG.info("Running 'run-application' command.");
 
+        // 获取命令行参数 option (枚举 option 在 CliFrontendParser 类)
         final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+        // 入口参数解析匹配 option
         final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
+        // 帮助命令
         if (commandLine.hasOption(HELP_OPTION.getOpt())) {
             CliFrontendParser.printHelpForRunApplication(customCommandLines);
             return;
         }
 
+        // 一般 flink-on-yarn 执行命令 bin/flink run-application -t yarn-application XXX
+        // -t 匹配 GenericCLI 并返回
         final CustomCommandLine activeCommandLine =
                 validateAndGetActiveCommandLine(checkNotNull(commandLine));
 
+        // 创建 ApplicationClusterDeployer
         final ApplicationDeployer deployer =
                 new ApplicationClusterDeployer(clusterClientServiceLoader);
 
@@ -197,9 +203,13 @@ public class CliFrontend {
                             programOptions,
                             Collections.emptyList());
         } else {
+            // 建运行程序参数 (也即运行参数解析 比如 -class 程序运行类 -Class 程序依赖jar)
             programOptions = new ProgramOptions(commandLine);
             programOptions.validate();
+            // 解析程序运行 Jar URI
             final URI uri = PackagedProgramUtils.resolveURI(programOptions.getJarFilePath());
+            // flink-conf.yaml + 程序入口参数合并
+            // 备注: key = pipeline.jars value = 程序运行 Jar
             effectiveConfiguration =
                     getEffectiveConfiguration(
                             activeCommandLine,
@@ -208,9 +218,13 @@ public class CliFrontend {
                             Collections.singletonList(uri.toString()));
         }
 
+        // 创建 ApplicationConfiguration
         final ApplicationConfiguration applicationConfiguration =
                 new ApplicationConfiguration(
-                        programOptions.getProgramArgs(), programOptions.getEntryPointClassName());
+                        programOptions.getProgramArgs(),
+                        // 程序运行类
+                        programOptions.getEntryPointClassName());
+        // 运行 Application
         deployer.run(effectiveConfiguration, applicationConfiguration);
     }
 
@@ -1110,6 +1124,7 @@ public class CliFrontend {
 
         // get action
         // bin/flink run XXX
+        // bin/flink run-application XXX
         String action = args[0];
 
         // remove action from parameters
@@ -1123,6 +1138,8 @@ public class CliFrontend {
                     run(params);
                     return 0;
                 case ACTION_RUN_APPLICATION:
+                    // 运行任务
+                    // bin/flink run-application -t yarn-application ./examples/streaming/TopSpeedWindowing.jar
                     runApplication(params);
                     return 0;
                 case ACTION_LIST:

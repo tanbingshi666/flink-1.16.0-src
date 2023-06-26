@@ -44,10 +44,13 @@ public class YarnLogConfigUtil {
     public static Configuration setLogConfigFileInConfig(
             final Configuration configuration, final String configurationDirectory) {
 
+        // 一般情况下 $internal.yarn.log-config-file 等于空
         if (configuration.get(YarnConfigOptionsInternal.APPLICATION_LOG_CONFIG_FILE) != null) {
             return configuration;
         }
 
+        // 从 $FLINK_HOME/conf 目录下找到 logback.xml 文件 并设置在 Configuration
+        // 比如 key = $internal.yarn.log-config-file value = /opt/app/flink-1.16.0/conf/logback.xml
         discoverLogConfigFile(configurationDirectory)
                 .ifPresent(
                         file ->
@@ -105,9 +108,9 @@ public class YarnLogConfigUtil {
         }
 
         return new StringBuilder(
-                        "-Dlog.file=\""
-                                + ApplicationConstants.LOG_DIR_EXPANSION_VAR
-                                + "/jobmanager.log\"")
+                "-Dlog.file=\""
+                        + ApplicationConstants.LOG_DIR_EXPANSION_VAR
+                        + "/jobmanager.log\"")
                 .append(" -Dlogback.configurationFile=file:" + CONFIG_FILE_LOGBACK_NAME)
                 .toString();
     }
@@ -119,9 +122,9 @@ public class YarnLogConfigUtil {
         }
 
         return new StringBuilder(
-                        "-Dlog.file=\""
-                                + ApplicationConstants.LOG_DIR_EXPANSION_VAR
-                                + "/jobmanager.log\"")
+                "-Dlog.file=\""
+                        + ApplicationConstants.LOG_DIR_EXPANSION_VAR
+                        + "/jobmanager.log\"")
                 .append(" -Dlog4j.configuration=file:" + CONFIG_FILE_LOG4J_NAME)
                 .append(" -Dlog4j.configurationFile=file:" + CONFIG_FILE_LOG4J_NAME)
                 .toString();

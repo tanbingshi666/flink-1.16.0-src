@@ -51,17 +51,37 @@ import static org.apache.flink.configuration.ConfigurationUtils.assembleDynamicC
  */
 public class TaskExecutorProcessUtils {
 
+    // TM 进程内存 (1728MB = 128 + 284 + 512 + 128 + 128 + 256 + 192)
     static final ProcessMemoryOptions TM_PROCESS_MEMORY_OPTIONS =
             new ProcessMemoryOptions(
                     Arrays.asList(
+                            // TM 任务堆内存
+                            // key = taskmanager.memory.task.heap.size
+                            // 默认 value = 384MB
                             TaskManagerOptions.TASK_HEAP_MEMORY,
+                            // TM 管理内存
+                            // key = taskmanager.memory.managed.size
+                            // 默认 value = 512MB
                             TaskManagerOptions.MANAGED_MEMORY_SIZE),
+                    // TM Flink 内存
+                    // key = taskmanager.memory.flink.size
                     TaskManagerOptions.TOTAL_FLINK_MEMORY,
+                    // TM 进程内存
+                    // key = taskmanager.memory.process.size
                     TaskManagerOptions.TOTAL_PROCESS_MEMORY,
+                    // JVM 元空间内存和 Overhead(预留)
                     new JvmMetaspaceAndOverheadOptions(
+                            // key = taskmanager.memory.jvm-metaspace.size
+                            // 默认 value = 256m
                             TaskManagerOptions.JVM_METASPACE,
+                            // key = taskmanager.memory.jvm-overhead.min
+                            // 默认 value = 192m
                             TaskManagerOptions.JVM_OVERHEAD_MIN,
+                            // key = taskmanager.memory.jvm-overhead.max
+                            // 默认 value = 1g
                             TaskManagerOptions.JVM_OVERHEAD_MAX,
+                            // key = taskmanager.memory.jvm-overhead.fraction
+                            // 默认 value = 0.1f
                             TaskManagerOptions.JVM_OVERHEAD_FRACTION));
 
     @SuppressWarnings("deprecation")
@@ -77,7 +97,8 @@ public class TaskExecutorProcessUtils {
     private static final MemoryBackwardsCompatibilityUtils LEGACY_MEMORY_UTILS =
             new MemoryBackwardsCompatibilityUtils(TM_LEGACY_HEAP_OPTIONS);
 
-    private TaskExecutorProcessUtils() {}
+    private TaskExecutorProcessUtils() {
+    }
 
     // ------------------------------------------------------------------------
     //  Generating Dynamic Config Options
@@ -130,7 +151,7 @@ public class TaskExecutorProcessUtils {
                     ExternalResourceOptions.EXTERNAL_RESOURCE_LIST.key(),
                     '"'
                             + String.join(
-                                    ";", taskExecutorProcessSpec.getExtendedResources().keySet())
+                            ";", taskExecutorProcessSpec.getExtendedResources().keySet())
                             + '"');
             taskExecutorProcessSpec
                     .getExtendedResources()

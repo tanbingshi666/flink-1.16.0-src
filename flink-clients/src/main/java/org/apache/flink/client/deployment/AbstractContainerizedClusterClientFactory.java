@@ -39,14 +39,23 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID>
     public ClusterSpecification getClusterSpecification(Configuration configuration) {
         checkNotNull(configuration);
 
+        // 获取 JM 进程内存大小 (可以查看 JobManagerProcessSpec 类看到 JM 的内存划分)
+        // key = jobmanager.memory.process.size
+        // 默认 value = 1600MB
         final int jobManagerMemoryMB =
-                JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
+                // JM 进程内存和 JVM 计算工具
+                JobManagerProcessUtils
+                        .processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
                                 configuration, JobManagerOptions.TOTAL_PROCESS_MEMORY)
                         .getTotalProcessMemorySize()
                         .getMebiBytes();
 
+        // 获取 TM 进程内存大小 (可以查看 TaskExecutorProcessSpec 类看到 TM 的内存划分)
+        // key = taskmanager.memory.process.size
+        // 默认 value = 1728MB
         final int taskManagerMemoryMB =
                 TaskExecutorProcessUtils.processSpecFromConfig(
+                                // TM 进程内存计算工具
                                 TaskExecutorProcessUtils
                                         .getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
                                                 configuration,
@@ -54,8 +63,12 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID>
                         .getTotalProcessMemorySize()
                         .getMebiBytes();
 
+        // 获取每个 TM 的 slot 个数
+        // key = taskmanager.numberOfTaskSlots
+        // 默认 value = 1
         int slotsPerTaskManager = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
 
+        // 创建程序任务 JM、TM Slot 资源配置 ClusterSpecification
         return new ClusterSpecification.ClusterSpecificationBuilder()
                 .setMasterMemoryMB(jobManagerMemoryMB)
                 .setTaskManagerMemoryMB(taskManagerMemoryMB)

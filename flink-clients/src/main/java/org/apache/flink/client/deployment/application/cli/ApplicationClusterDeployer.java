@@ -57,13 +57,21 @@ public class ApplicationClusterDeployer implements ApplicationDeployer {
 
         LOG.info("Submitting application in 'Application Mode'.");
 
+        // clusterClientFactory = YarnClusterClientFactory
         final ClusterClientFactory<ClusterID> clientFactory =
                 clientServiceLoader.getClusterClientFactory(configuration);
-        try (final ClusterDescriptor<ClusterID> clusterDescriptor =
-                clientFactory.createClusterDescriptor(configuration)) {
+
+        try (
+                // 获取集群描述器
+                // 如果程序任务提交到 Yarn 返回 YarnClusterDescriptor
+                final ClusterDescriptor<ClusterID> clusterDescriptor =
+                        clientFactory.createClusterDescriptor(configuration)) {
+
+            // 获取程序任务提交到 Yarn 集群的资源配置 (JM TM)
             final ClusterSpecification clusterSpecification =
                     clientFactory.getClusterSpecification(configuration);
 
+            // 部署程序应用到 yarn 集群
             clusterDescriptor.deployApplicationCluster(
                     clusterSpecification, applicationConfiguration);
         }

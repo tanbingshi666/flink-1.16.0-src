@@ -26,8 +26,11 @@ public final class ClusterSpecification {
 
     private ClusterSpecification(
             int masterMemoryMB, int taskManagerMemoryMB, int slotsPerTaskManager) {
+        // JM 进程内存
         this.masterMemoryMB = masterMemoryMB;
+        // TM 进行内存
         this.taskManagerMemoryMB = taskManagerMemoryMB;
+        // TM Slot 个数
         this.slotsPerTaskManager = slotsPerTaskManager;
     }
 
@@ -77,6 +80,7 @@ public final class ClusterSpecification {
         }
 
         public ClusterSpecification createClusterSpecification() {
+            // 创建 ClusterSpecification
             return new ClusterSpecification(
                     masterMemoryMB, taskManagerMemoryMB, slotsPerTaskManager);
         }

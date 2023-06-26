@@ -81,7 +81,7 @@ public class AbstractJobClusterExecutor<
             final ExecutionConfigAccessor configAccessor =
                     ExecutionConfigAccessor.fromConfiguration(configuration);
 
-            // 获取程序任务提交到集群的资源配置 (JM TM)
+            // 获取程序任务提交到 Yarn 集群的资源配置 (JM TM)
             final ClusterSpecification clusterSpecification =
                     clusterClientFactory.getClusterSpecification(configuration);
 
@@ -89,6 +89,7 @@ public class AbstractJobClusterExecutor<
             final ClusterClientProvider<ClusterID> clusterClientProvider =
                     clusterDescriptor.deployJobCluster(
                             clusterSpecification, jobGraph, configAccessor.getDetachedMode());
+
             LOG.info("Job has been submitted with JobID " + jobGraph.getJobID());
 
             return CompletableFuture.completedFuture(

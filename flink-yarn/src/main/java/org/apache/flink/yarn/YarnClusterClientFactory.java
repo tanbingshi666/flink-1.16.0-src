@@ -55,9 +55,14 @@ public class YarnClusterClientFactory
     public YarnClusterDescriptor createClusterDescriptor(Configuration configuration) {
         checkNotNull(configuration);
 
+        // 获取 $FLINK_HONE/conf 目录路径 比如 /opt/app/flink-1.16.0/conf
         final String configurationDirectory = configuration.get(DeploymentOptionsInternal.CONF_DIR);
+        // 设置 Yarn Log 日志文件到 Configuration
+        // 从 $FLINK_HOME/conf 目录下找到 logback.xml 文件 并设置在 Configuration
+        // 比如 key = $internal.yarn.log-config-file value = /opt/app/flink-1.16.0/conf/logback.xml
         YarnLogConfigUtil.setLogConfigFileInConfig(configuration, configurationDirectory);
 
+        // 获取 Yarn 集群描述器 YarnClusterDescriptor
         return getClusterDescriptor(configuration);
     }
 
@@ -75,13 +80,23 @@ public class YarnClusterClientFactory
     }
 
     private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
+        // 创建 Yarn 客户端 (YarnClientImpl <- YarnClient)
         final YarnClient yarnClient = YarnClient.createYarnClient();
+        // 1 从 Flink 程序任务过滤去相关 Yarn 配置(前缀 flink.yarn.)
+        // 2 从系统加载 Hadoop Yarn 相关配置文件信息 (export HADOOP_CLASSPATH=`hadoop classpath`)
         final YarnConfiguration yarnConfiguration =
                 Utils.getYarnAndHadoopConfiguration(configuration);
 
+        // Yarn 核心 Service 服务的标配调用方法
+        // 调用 YarnClientImpl.serviceInit()
+        // 初始化一些属性值
         yarnClient.init(yarnConfiguration);
+        // 调用 YarnClientImpl.serviceStart()
+        // 获取 Yarn ResourceManager 的 RPC ClientRMService 服务 的一个客户端代理对象
+        // 通讯协议接口为 ApplicationClientProtocol
         yarnClient.start();
 
+        // 创建 Yarn 集群描述器 YarnClusterDescriptor
         return new YarnClusterDescriptor(
                 configuration,
                 yarnConfiguration,

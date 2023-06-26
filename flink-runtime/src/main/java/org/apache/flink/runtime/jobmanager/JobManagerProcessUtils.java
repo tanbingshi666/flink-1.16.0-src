@@ -41,15 +41,34 @@ import java.util.Map;
 /** JobManager utils to calculate {@link JobManagerProcessSpec} and JVM args. */
 public class JobManagerProcessUtils {
 
+    // JM 进程内存 默认 1600M = 1024 + 128 + 256 + 192
     static final ProcessMemoryOptions JM_PROCESS_MEMORY_OPTIONS =
             new ProcessMemoryOptions(
+                    // JM JVM 堆内存
+                    // key = jobmanager.memory.heap.size 默认值 1024MB 最小值 128MB
                     Collections.singletonList(JobManagerOptions.JVM_HEAP_MEMORY),
+                    // JM Flink 内存 (JVM 堆内存 + 堆外内存[默认 128MB])
+                    // key = jobmanager.memory.flink.size
                     JobManagerOptions.TOTAL_FLINK_MEMORY,
+                    // JM 进程内存 ( Flink 内存 + JVM Metaspace + JVM Overhead)
+                    // key = jobmanager.memory.process.size
                     JobManagerOptions.TOTAL_PROCESS_MEMORY,
+                    // JM JVM 元空间以及Overhead
                     new JvmMetaspaceAndOverheadOptions(
+                            // JVM 元空间内存
+                            // key = jobmanager.memory.jvm-metaspace.size
+                            // 默认 value = 256MB
                             JobManagerOptions.JVM_METASPACE,
+                            // JVM Overhead 内存
+                            // key = jobmanager.memory.jvm-overhead.min
+                            // 默认 value = 192MB
                             JobManagerOptions.JVM_OVERHEAD_MIN,
+                            // key = jobmanager.memory.jvm-overhead.max
+                            // 默认 value = 1024MB
                             JobManagerOptions.JVM_OVERHEAD_MAX,
+                            // JM 进程内存预留内存给 JVM Overhead
+                            // key = jobmanager.memory.jvm-overhead.fraction
+                            // 默认 value = 0.1f
                             JobManagerOptions.JVM_OVERHEAD_FRACTION));
 
     @SuppressWarnings("deprecation")
@@ -65,12 +84,16 @@ public class JobManagerProcessUtils {
     private static final MemoryBackwardsCompatibilityUtils LEGACY_MEMORY_UTILS =
             new MemoryBackwardsCompatibilityUtils(JM_LEGACY_HEAP_OPTIONS);
 
-    private JobManagerProcessUtils() {}
+    private JobManagerProcessUtils() {
+    }
 
     public static JobManagerProcessSpec processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
             Configuration config, ConfigOption<MemorySize> newOptionToInterpretLegacyHeap) {
         try {
+            // 计算 JM 进程内存
             return processSpecFromConfig(
+                    // 如果在 flink-conf.yaml 配置老版本的 JM 内存设置 则需要映射成新版本的配置
+                    // 一般情况下 直接返回 Configuration 即可
                     getConfigurationWithLegacyHeapSizeMappedToNewConfigOption(
                             config, newOptionToInterpretLegacyHeap));
         } catch (IllegalConfigurationException e) {
@@ -80,11 +103,16 @@ public class JobManagerProcessUtils {
     }
 
     static JobManagerProcessSpec processSpecFromConfig(Configuration config) {
-        return createMemoryProcessSpec(PROCESS_MEMORY_UTILS.memoryProcessSpecFromConfig(config));
+        // 创建 JobManagerProcessSpec
+        return createMemoryProcessSpec(
+                // JM 内存处理
+                PROCESS_MEMORY_UTILS.memoryProcessSpecFromConfig(config)
+        );
     }
 
     private static JobManagerProcessSpec createMemoryProcessSpec(
             CommonProcessMemorySpec<JobManagerFlinkMemory> processMemory) {
+        // 创建 JobManagerProcessSpec
         return new JobManagerProcessSpec(
                 processMemory.getFlinkMemory(), processMemory.getJvmMetaspaceAndOverhead());
     }
