@@ -120,6 +120,7 @@ public class AkkaRpcService implements RpcService {
     @VisibleForTesting
     public AkkaRpcService(
             final ActorSystem actorSystem, final AkkaRpcServiceConfiguration configuration) {
+        // 创建 RpcService (AkkaRpcService)
         this(actorSystem, configuration, AkkaRpcService.class.getClassLoader());
     }
 
@@ -127,18 +128,22 @@ public class AkkaRpcService implements RpcService {
             final ActorSystem actorSystem,
             final AkkaRpcServiceConfiguration configuration,
             final ClassLoader flinkClassLoader) {
+        // akka 里面的 ActorSystem
         this.actorSystem = checkNotNull(actorSystem, "actor system");
+        // akka RpcService 配置
+        // 比如 akka.ask.timeout 超时时间 默认 10s
+        // 比如 akka.framesize 一条消息限制大小 默认 10MB
         this.configuration = checkNotNull(configuration, "akka rpc service configuration");
         this.flinkClassLoader = checkNotNull(flinkClassLoader, "flinkClassLoader");
 
+        // ActorSystem 地址
+        // 比如 akka.tcp://flink@10.140.9.85:51269
         Address actorSystemAddress = AkkaUtils.getAddress(actorSystem);
-
         if (actorSystemAddress.host().isDefined()) {
             address = actorSystemAddress.host().get();
         } else {
             address = "";
         }
-
         if (actorSystemAddress.port().isDefined()) {
             port = (Integer) actorSystemAddress.port().get();
         } else {
@@ -155,11 +160,13 @@ public class AkkaRpcService implements RpcService {
         // external threads (because they inherit the current threads context class loader)
         internalScheduledExecutor =
                 new ActorSystemScheduledExecutorAdapter(actorSystem, flinkClassLoader);
-
         terminationFuture = new CompletableFuture<>();
-
         stopped = false;
 
+        // 创建 Supervisor 主管 Actor (后续创建 Actor 由 Supervisor 管生要管养 管杀要管埋 )
+        // 比如 Actor 路径
+        // 1 akka.tcp://${actor_system}@${actor_system_host}:${actor_system_port}/user/${actor_name}
+        // 2 akka://flink/user/rpc
         supervisor = startSupervisorActor();
         startDeadLettersActor();
     }
@@ -175,11 +182,13 @@ public class AkkaRpcService implements RpcService {
                 Executors.newSingleThreadExecutor(
                         new ExecutorThreadFactory(
                                 "AkkaRpcService-Supervisor-Termination-Future-Executor"));
+        // 从 ActorSystem 创建 Supervisor 主管 Actor
         final ActorRef actorRef =
                 SupervisorActor.startSupervisorActor(
                         actorSystem,
                         withContextClassLoader(terminationFutureExecutor, flinkClassLoader));
 
+        // Supervisor 封装 Actor
         return Supervisor.create(actorRef, terminationFutureExecutor);
     }
 
@@ -204,8 +213,13 @@ public class AkkaRpcService implements RpcService {
     // this method does not mutate state and is thus thread-safe
     @Override
     public <C extends RpcGateway> CompletableFuture<C> connect(
-            final String address, final Class<C> clazz) {
+            // 远程 akka RPC 地址
+            // 比如 akka.tcp://flink@10.140.9.85:60902/user/rpc/cc9d2c7e-2f1f-457c-9ea3-11a6b67a1591
+            final String address,
+            // 远程 akka rpc gateway (也即协议接口)
+            final Class<C> clazz) {
 
+        // 连接远程 RPC (Actor)
         return connectInternal(
                 address,
                 clazz,
@@ -253,17 +267,19 @@ public class AkkaRpcService implements RpcService {
     public <C extends RpcEndpoint & RpcGateway> RpcServer startServer(C rpcEndpoint) {
         checkNotNull(rpcEndpoint, "rpc endpoint");
 
+        // 1 向 Supervisor 发送一个 ask 请求创建一个 Actor(拿到 ActorRef)
+        // 2 缓存 ActorRef 对应的 RpcEndpoint 到 actions
         final SupervisorActor.ActorRegistration actorRegistration =
                 registerAkkaRpcActor(rpcEndpoint);
         final ActorRef actorRef = actorRegistration.getActorRef();
         final CompletableFuture<Void> actorTerminationFuture =
                 actorRegistration.getTerminationFuture();
-
+        // akka[.tcp]://flink[@ip:port]/user/rpc/390dba5f-f1fe-475f-9cf6-b37eb5761266
         LOG.info(
                 "Starting RPC endpoint for {} at {} .",
                 rpcEndpoint.getClass().getName(),
                 actorRef.path());
-
+        // akka.tcp://flink@10.140.9.85:62856/user/rpc/390dba5f-f1fe-475f-9cf6-b37eb5761266
         final String akkaAddress = AkkaUtils.getAkkaURL(actorSystem, actorRef);
         final String hostname;
         Option<String> host = actorRef.path().address().host();
@@ -273,16 +289,20 @@ public class AkkaRpcService implements RpcService {
             hostname = host.get();
         }
 
+        // 获取 RpcEndpoint 实现哪些接口类
+        // 比如 0 -> GetNowGateway , 1 -> RpcGateway
         Set<Class<?>> implementedRpcGateways =
                 new HashSet<>(RpcUtils.extractImplementedRpcGateways(rpcEndpoint.getClass()));
-
+        // 添加其他接口
         implementedRpcGateways.add(RpcServer.class);
         implementedRpcGateways.add(AkkaBasedEndpoint.class);
 
         final InvocationHandler akkaInvocationHandler;
 
+        // 判断 RpcEndpoint 的类型
         if (rpcEndpoint instanceof FencedRpcEndpoint) {
             // a FencedRpcEndpoint needs a FencedAkkaInvocationHandler
+            // 创建 FencedAkkaInvocationHandler
             akkaInvocationHandler =
                     new FencedAkkaInvocationHandler<>(
                             akkaAddress,
@@ -296,6 +316,7 @@ public class AkkaRpcService implements RpcService {
                             captureAskCallstacks,
                             flinkClassLoader);
         } else {
+            // 创建 AkkaInvocationHandler
             akkaInvocationHandler =
                     new AkkaInvocationHandler(
                             akkaAddress,
@@ -315,7 +336,13 @@ public class AkkaRpcService implements RpcService {
         ClassLoader classLoader = getClass().getClassLoader();
 
         @SuppressWarnings("unchecked")
-        RpcServer server =
+        // 基于 JDK 动态代理获取 RpcServer
+        /**
+         * 1 classLoader 类加载器
+         * 2 Actor 实现哪些 RpcGateway 接口
+         * 3 akkaInvocationHandler 代理器 核心方法 invoke()
+         */
+                RpcServer server =
                 (RpcServer)
                         Proxy.newProxyInstance(
                                 classLoader,
@@ -327,9 +354,10 @@ public class AkkaRpcService implements RpcService {
     }
 
     private <C extends RpcEndpoint & RpcGateway>
-            SupervisorActor.ActorRegistration registerAkkaRpcActor(C rpcEndpoint) {
+    SupervisorActor.ActorRegistration registerAkkaRpcActor(C rpcEndpoint) {
         final Class<? extends AbstractActor> akkaRpcActorType;
 
+        // 根据 RpcEndpoint 类型创建对应的 AkkaRpcActor (继承 akka 的 AbstractActor)
         if (rpcEndpoint instanceof FencedRpcEndpoint) {
             akkaRpcActorType = FencedAkkaRpcActor.class;
         } else {
@@ -340,6 +368,7 @@ public class AkkaRpcService implements RpcService {
             checkState(!stopped, "RpcService is stopped");
 
             final SupervisorActor.StartAkkaRpcActorResponse startAkkaRpcActorResponse =
+                    // 向 Supervisor 发送一个 ask 请求创建一个 Actor
                     SupervisorActor.startAkkaRpcActor(
                             supervisor.getActor(),
                             actorTerminationFuture ->
@@ -351,6 +380,7 @@ public class AkkaRpcService implements RpcService {
                                             configuration.getMaximumFramesize(),
                                             configuration.isForceRpcInvocationSerialization(),
                                             flinkClassLoader),
+                            // 创建 Actor 名称
                             rpcEndpoint.getEndpointId());
 
             final SupervisorActor.ActorRegistration actorRegistration =
@@ -363,6 +393,7 @@ public class AkkaRpcService implements RpcService {
                                                     rpcEndpoint.getEndpointId()),
                                             cause));
 
+            // 缓存 ActorRef 对应的 RpcEndpoint
             actors.put(actorRegistration.getActorRef(), rpcEndpoint);
 
             return actorRegistration;
@@ -395,7 +426,7 @@ public class AkkaRpcService implements RpcService {
             return (RpcServer)
                     Proxy.newProxyInstance(
                             classLoader,
-                            new Class<?>[] {RpcServer.class, AkkaBasedEndpoint.class},
+                            new Class<?>[]{RpcServer.class, AkkaBasedEndpoint.class},
                             fencedInvocationHandler);
         } else {
             throw new RuntimeException(
@@ -546,8 +577,10 @@ public class AkkaRpcService implements RpcService {
                 address,
                 clazz.getName());
 
+        // 基于 ActorSystem 连接指定远程 Address 对应的 Actor 返回 ActorRef
         final CompletableFuture<ActorRef> actorRefFuture = resolveActorAddress(address);
 
+        // 拿到远程 RPC ActorRef 发送握手消息 (最终调用远程 AkkaRpcActor.createReceive() )
         final CompletableFuture<HandshakeSuccessMessage> handshakeFuture =
                 actorRefFuture.thenCompose(
                         (ActorRef actorRef) ->
@@ -562,7 +595,7 @@ public class AkkaRpcService implements RpcService {
                                                                 .<HandshakeSuccessMessage>apply(
                                                                         HandshakeSuccessMessage
                                                                                 .class))));
-
+        // 基于 JDK 动态代理创建远程 RPC Actor 的代理对象 ActorRef(通讯 gateway 为传入的接口)
         final CompletableFuture<C> gatewayFuture =
                 actorRefFuture.thenCombineAsync(
                         handshakeFuture,
@@ -582,19 +615,19 @@ public class AkkaRpcService implements RpcService {
                                     (C)
                                             Proxy.newProxyInstance(
                                                     classLoader,
-                                                    new Class<?>[] {clazz},
+                                                    new Class<?>[]{clazz},
                                                     invocationHandler);
 
                             return proxy;
                         },
                         actorSystem.dispatcher());
 
+        // 返回远程 RPC Actor 代理对象 (ActorRef)
         return guardCompletionWithContextClassLoader(gatewayFuture, flinkClassLoader);
     }
 
     private CompletableFuture<ActorRef> resolveActorAddress(String address) {
         final ActorSelection actorSel = actorSystem.actorSelection(address);
-
         return actorSel.resolveOne(configuration.getTimeout())
                 .toCompletableFuture()
                 .exceptionally(

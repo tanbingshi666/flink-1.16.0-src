@@ -67,6 +67,7 @@ class AkkaUtils {
      * Gets the basic Akka config which is shared by remote and local actor systems.
      *
      * @param configuration instance which contains the user specified values for the configuration
+     *
      * @return Flink's basic Akka config
      */
     private static Config getBasicAkkaConfig(Configuration configuration) {
@@ -184,6 +185,7 @@ class AkkaUtils {
      * @param port to bind to or if 0 then Akka picks a free port automatically
      * @param externalHostname The host name to expect for Akka messages
      * @param externalPort The port to expect for Akka messages
+     *
      * @return Flink's Akka configuration for remote actor systems
      */
     private static Config getRemoteAkkaConfig(
@@ -347,7 +349,7 @@ class AkkaUtils {
         final String akkaSSLCertFingerprints =
                 akkaSSLCertFingerprintString != null
                         ? Arrays.stream(akkaSSLCertFingerprintString.split(","))
-                                .collect(Collectors.joining("\",\"", "[\"", "\"]"))
+                        .collect(Collectors.joining("\",\"", "[\"", "\"]"))
                         : "[]";
 
         final String akkaSSLProtocol = configuration.getString(SecurityOptions.SSL_PROTOCOL);
@@ -391,6 +393,7 @@ class AkkaUtils {
      * Creates a local actor system without remoting.
      *
      * @param configuration instance containing the user provided configuration values
+     *
      * @return The created actor system
      */
     public static ActorSystem createLocalActorSystem(Configuration configuration) {
@@ -402,10 +405,15 @@ class AkkaUtils {
      * Creates an actor system with the given akka config.
      *
      * @param akkaConfig configuration for the actor system
+     *
      * @return created actor system
      */
     private static ActorSystem createActorSystem(Config akkaConfig) {
-        return createActorSystem(getFlinkActorSystemName(), akkaConfig);
+        // 创建 ActorSystem
+        return createActorSystem(
+                // 默认 ActorSystem 名称 flink
+                getFlinkActorSystemName(),
+                akkaConfig);
     }
 
     /**
@@ -413,11 +421,13 @@ class AkkaUtils {
      *
      * @param actorSystemName name of the actor system
      * @param akkaConfig configuration for the actor system
+     *
      * @return created actor system
      */
     public static ActorSystem createActorSystem(String actorSystemName, Config akkaConfig) {
         // Initialize slf4j as logger of Akka's Netty instead of java.util.logging (FLINK-1650)
         InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory());
+        // 创建 ActorSystem
         return RobustActorSystem.create(actorSystemName, akkaConfig);
     }
 
@@ -429,7 +439,11 @@ class AkkaUtils {
      */
     @VisibleForTesting
     public static ActorSystem createDefaultActorSystem() {
-        return createActorSystem(getDefaultAkkaConfig());
+        // 基于默认 akka 配置创建一个 ActorSystem
+        // 默认 ActorSystem 在本地监听一个随机接口
+        return createActorSystem(
+                getDefaultAkkaConfig()
+        );
     }
 
     /**
@@ -448,7 +462,8 @@ class AkkaUtils {
      *
      * @param configuration instance containing the user provided configuration values
      * @param externalAddress optional tuple of bindAddress and port to be reachable at. If null is
-     *     given, then an Akka config for local actor system will be returned
+     *         given, then an Akka config for local actor system will be returned
+     *
      * @return Akka config
      */
     public static Config getAkkaConfig(
@@ -467,11 +482,12 @@ class AkkaUtils {
      *
      * @param configuration instance containing the user provided configuration values
      * @param externalAddress optional tuple of external address and port to be reachable at. If
-     *     null is given, then an Akka config for local actor system will be returned
+     *         null is given, then an Akka config for local actor system will be returned
      * @param bindAddress optional tuple of bind address and port to be used locally. If null is
-     *     given, wildcard IP address and the external port wil be used. Takes effect only if
-     *     externalAddress is not null.
+     *         given, wildcard IP address and the external port wil be used. Takes effect only if
+     *         externalAddress is not null.
      * @param executorConfig config defining the used executor by the default dispatcher
+     *
      * @return Akka config
      */
     public static Config getAkkaConfig(
@@ -515,6 +531,7 @@ class AkkaUtils {
      * port and the host under which the actor system is reachable.
      *
      * @param system {@link ActorSystem} for which the {@link Address} shall be retrieved
+     *
      * @return {@link Address} of the given {@link ActorSystem}
      */
     public static Address getAddress(ActorSystem system) {
@@ -527,6 +544,7 @@ class AkkaUtils {
      *
      * @param system {@link ActorSystem} in which the given {@link ActorRef} is running
      * @param actor {@link ActorRef} of the actor for which the URL has to be generated
+     *
      * @return String containing the {@link ActorSystem} independent URL of the actor
      */
     public static String getAkkaURL(ActorSystem system, ActorRef actor) {
@@ -538,9 +556,11 @@ class AkkaUtils {
      * Extracts the {@link Address} from the given akka URL.
      *
      * @param akkaURL to extract the {@link Address} from
-     * @throws MalformedURLException if the {@link Address} could not be parsed from the given akka
-     *     URL
+     *
      * @return Extracted {@link Address} from the given akka URL
+     *
+     * @throws MalformedURLException if the {@link Address} could not be parsed from the given akka
+     *         URL
      */
     @SuppressWarnings("RedundantThrows") // hidden checked exception coming from Akka
     public static Address getAddressFromAkkaURL(String akkaURL) throws MalformedURLException {
@@ -554,8 +574,10 @@ class AkkaUtils {
      * provided, then an {@link Exception} is thrown.
      *
      * @param akkaURL The URL to extract the host and port from.
-     * @throws java.lang.Exception Thrown, if the given string does not represent a proper url
+     *
      * @return The InetSocketAddress with the extracted host and port.
+     *
+     * @throws java.lang.Exception Thrown, if the given string does not represent a proper url
      */
     public static InetSocketAddress getInetSocketAddressFromAkkaURL(String akkaURL)
             throws Exception {
@@ -577,6 +599,7 @@ class AkkaUtils {
      * Terminates the given {@link ActorSystem} and returns its termination future.
      *
      * @param actorSystem to terminate
+     *
      * @return Termination future
      */
     public static CompletableFuture<Void> terminateActorSystem(ActorSystem actorSystem) {

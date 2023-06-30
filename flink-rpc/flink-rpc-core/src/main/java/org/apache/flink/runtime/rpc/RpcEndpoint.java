@@ -135,9 +135,11 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * @param endpointId Unique identifier for this endpoint
      */
     protected RpcEndpoint(final RpcService rpcService, final String endpointId) {
+        // RpcService(ActorSystem)
         this.rpcService = checkNotNull(rpcService, "rpcService");
+        // Endpoint ID (Actor 名称)
         this.endpointId = checkNotNull(endpointId, "endpointId");
-
+        // 创建 Actor 代理 (基于 JDK 动态代理创建)
         this.rpcServer = rpcService.startServer(this);
         this.resourceRegistry = new CloseableRegistry();
 
@@ -183,6 +185,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * endpoint is ready to process remote procedure calls.
      */
     public final void start() {
+        // 启动 Actor
         rpcServer.start();
     }
 
@@ -190,7 +193,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * Internal method which is called by the RpcService implementation to start the RpcEndpoint.
      *
      * @throws Exception indicating that the rpc endpoint could not be started. If an exception
-     *     occurs, then the rpc endpoint will automatically terminate.
+     *         occurs, then the rpc endpoint will automatically terminate.
      */
     public final void internalCallOnStart() throws Exception {
         validateRunsInMainThread();
@@ -208,9 +211,10 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * <p>IMPORTANT: This method should never be called directly by the user.
      *
      * @throws Exception indicating that the rpc endpoint could not be started. If an exception
-     *     occurs, then the rpc endpoint will automatically terminate.
+     *         occurs, then the rpc endpoint will automatically terminate.
      */
-    protected void onStart() throws Exception {}
+    protected void onStart() throws Exception {
+    }
 
     /**
      * Triggers stop of the rpc endpoint. This tells the underlying rpc server that the rpc endpoint
@@ -224,7 +228,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * Internal method which is called by the RpcService implementation to stop the RpcEndpoint.
      *
      * @return Future which is completed once all post stop actions are completed. If an error
-     *     occurs this future is completed exceptionally
+     *         occurs this future is completed exceptionally
      */
     public final CompletableFuture<Void> internalCallOnStop() {
         validateRunsInMainThread();
@@ -259,6 +263,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * Unregister the given closeable resource from {@link CloseableRegistry}.
      *
      * @param closeableResource the given closeable resource
+     *
      * @return true if the given resource unregister successful, otherwise false
      */
     protected boolean unregisterResource(Closeable closeableResource) {
@@ -274,7 +279,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * <p>IMPORTANT: This method should never be called directly by the user.
      *
      * @return Future which is completed once all post stop actions are completed. If an error
-     *     occurs this future is completed exceptionally
+     *         occurs this future is completed exceptionally
      */
     protected CompletableFuture<Void> onStop() {
         return CompletableFuture.completedFuture(null);
@@ -305,13 +310,14 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      *
      * @param selfGatewayType class of the self gateway type
      * @param <C> type of the self gateway to create
+     *
      * @return Self gateway of the specified type which can be used to issue asynchronous rpcs
      */
     public <C extends RpcGateway> C getSelfGateway(Class<C> selfGatewayType) {
         if (selfGatewayType.isInstance(rpcServer)) {
             @SuppressWarnings("unchecked")
             C selfGateway = ((C) rpcServer);
-
+            // 获取自身 RpcServer (Actor 的代理引用)
             return selfGateway;
         } else {
             throw new RuntimeException(
@@ -414,6 +420,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      * @param callable Callable to be executed in the main thread of the underlying rpc server
      * @param timeout Timeout for the callable to be completed
      * @param <V> Return type of the callable
+     *
      * @return Future for the result of the callable.
      */
     protected <V> CompletableFuture<V> callAsync(Callable<V> callable, Duration timeout) {
@@ -500,6 +507,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
          * @param command the task to execute in the future
          * @param delay the time from now to delay the execution
          * @param unit the time unit of the delay parameter
+         *
          * @return a ScheduledFuture representing the completion of the scheduled task
          */
         @Override
@@ -525,6 +533,7 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
          * @param delay the time from now to delay the execution
          * @param unit the time unit of the delay parameter
          * @param <V> result type of the callable
+         *
          * @return a ScheduledFuture which holds the future value of the given callable
          */
         @Override

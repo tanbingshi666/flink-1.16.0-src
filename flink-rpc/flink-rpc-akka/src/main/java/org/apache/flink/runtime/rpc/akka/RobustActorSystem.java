@@ -50,6 +50,7 @@ public abstract class RobustActorSystem extends ActorSystemImpl {
     }
 
     public static RobustActorSystem create(String name, Config applicationConfig) {
+        // 创建 ActorSystem
         return create(name, applicationConfig, FatalExitExceptionHandler.INSTANCE);
     }
 
@@ -58,8 +59,10 @@ public abstract class RobustActorSystem extends ActorSystemImpl {
             String name,
             Config applicationConfig,
             Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+        // 创建 ActorSystem
         return create(
                 name,
+                // ActorSystem 配置
                 ActorSystemSetup.create(
                         BootstrapSetup.create(
                                 Optional.empty(),

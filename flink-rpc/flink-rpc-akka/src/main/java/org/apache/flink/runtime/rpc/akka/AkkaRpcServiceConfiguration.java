@@ -29,9 +29,11 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 /** Configuration for the {@link AkkaRpcService}. */
 public class AkkaRpcServiceConfiguration {
 
-    @Nonnull private final Configuration configuration;
+    @Nonnull
+    private final Configuration configuration;
 
-    @Nonnull private final Duration timeout;
+    @Nonnull
+    private final Duration timeout;
 
     private final long maximumFramesize;
 
@@ -95,6 +97,9 @@ public class AkkaRpcServiceConfiguration {
     }
 
     public static AkkaRpcServiceConfiguration defaultConfiguration() {
+        // 获取 RpcService 配置
+        // 比如 akka.ask.timeout 超时时间 默认 10s
+        // 比如 akka.framesize 一条消息限制大小 默认 10MB
         return fromConfiguration(new Configuration());
     }
 }

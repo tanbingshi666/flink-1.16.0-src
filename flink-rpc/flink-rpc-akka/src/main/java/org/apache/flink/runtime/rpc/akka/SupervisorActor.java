@@ -68,6 +68,7 @@ class SupervisorActor extends AbstractActor {
 
     @Override
     public Receive createReceive() {
+        // 接收消息进行处理
         return receiveBuilder()
                 .match(StartAkkaRpcActor.class, this::createStartAkkaRpcActorMessage)
                 .matchAny(this::handleUnknownMessage)
@@ -194,6 +195,7 @@ class SupervisorActor extends AbstractActor {
         final Props supervisorProps =
                 Props.create(SupervisorActor.class, terminationFutureExecutor)
                         .withDispatcher("akka.actor.supervisor-dispatcher");
+        // 从 ActorSystem 创建 Actor (SupervisorActor)
         return actorSystem.actorOf(supervisorProps, getActorName());
     }
 
@@ -257,7 +259,8 @@ class SupervisorActor extends AbstractActor {
 
         private final CompletableFuture<Void> externalTerminationFuture;
 
-        @Nullable private Throwable errorCause;
+        @Nullable
+        private Throwable errorCause;
 
         private AkkaRpcActorRegistration(String endpointId) {
             this.endpointId = endpointId;
@@ -374,9 +377,11 @@ class SupervisorActor extends AbstractActor {
     }
 
     static final class StartAkkaRpcActorResponse {
-        @Nullable private final ActorRegistration actorRegistration;
+        @Nullable
+        private final ActorRegistration actorRegistration;
 
-        @Nullable private final Throwable error;
+        @Nullable
+        private final Throwable error;
 
         private StartAkkaRpcActorResponse(
                 @Nullable ActorRegistration actorRegistration, @Nullable Throwable error) {

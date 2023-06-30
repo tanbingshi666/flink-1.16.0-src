@@ -95,7 +95,8 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
     private final long maximumFramesize;
 
     // null if gateway; otherwise non-null
-    @Nullable private final CompletableFuture<Void> terminationFuture;
+    @Nullable
+    private final CompletableFuture<Void> terminationFuture;
 
     private final boolean captureAskCallStack;
 
@@ -110,8 +111,11 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
             boolean captureAskCallStack,
             ClassLoader flinkClassLoader) {
 
+        // 比如 akka.tcp://flink@10.140.9.85:62856/user/rpc/390dba5f-f1fe-475f-9cf6-b37eb5761266
         this.address = Preconditions.checkNotNull(address);
+        // 比如 localhost
         this.hostname = Preconditions.checkNotNull(hostname);
+        // ActorRef -> LocalActorRef 或者 RemoteActorRef
         this.rpcEndpoint = Preconditions.checkNotNull(rpcEndpoint);
         this.flinkClassLoader = Preconditions.checkNotNull(flinkClassLoader);
         this.isLocal = this.rpcEndpoint.path().address().hasLocalScope();
@@ -124,16 +128,17 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 获取调用方法的类
         Class<?> declaringClass = method.getDeclaringClass();
 
         Object result;
-
         if (declaringClass.equals(AkkaBasedEndpoint.class)
                 || declaringClass.equals(Object.class)
                 || declaringClass.equals(RpcGateway.class)
                 || declaringClass.equals(StartStoppable.class)
                 || declaringClass.equals(MainThreadExecutable.class)
                 || declaringClass.equals(RpcServer.class)) {
+            // 触发本地方法调用
             result = method.invoke(this, args);
         } else if (declaringClass.equals(FencedRpcGateway.class)) {
             throw new UnsupportedOperationException(
@@ -143,9 +148,9 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
                             + "fencing token. Please use RpcService#connect(RpcService, F, Time) with F being the fencing token to "
                             + "retrieve a properly FencedRpcGateway.");
         } else {
+            // 触发远程 RPC 调用
             result = invokeRpc(method, args);
         }
-
         return result;
     }
 
@@ -193,6 +198,9 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
 
     @Override
     public void start() {
+        // Actor 给自己 tell 发送一个消息 改变 Actor 自身的状态为 START
+        // 先调用 AkkaInvocationHandler.invoke() 判断
+        // 最终调用其 RpcEndpoint 的 onStart()
         rpcEndpoint.tell(ControlMessages.START, ActorRef.noSender());
     }
 
@@ -210,18 +218,29 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
      *
      * @param method to call
      * @param args of the method call
+     *
      * @return result of the RPC; the result future is completed with a {@link TimeoutException} if
-     *     the requests times out; if the recipient is not reachable, then the result future is
-     *     completed with a {@link RecipientUnreachableException}.
+     *         the requests times out; if the recipient is not reachable, then the result future is
+     *         completed with a {@link RecipientUnreachableException}.
+     *
      * @throws Exception if the RPC invocation fails
      */
     private Object invokeRpc(Method method, Object[] args) throws Exception {
+        // 获取 RPC 远程调用方法名称
         String methodName = method.getName();
+        // 获取 RPC 远程调用方法参数类型
         Class<?>[] parameterTypes = method.getParameterTypes();
+        // RPC 远程调用方法上是否存在 Local 注解
         final boolean isLocalRpcInvocation = method.getAnnotation(Local.class) != null;
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
         Duration futureTimeout = extractRpcTimeout(parameterAnnotations, args, timeout);
 
+        // 封装一个 RPC 调用消息
+        /**
+         * RPC 调用分为如下两种情况
+         * 1 本地调用 返回 LocalRpcInvocation
+         * 2 远程调用 返回 RemoteRpcInvocation
+         */
         final RpcInvocation rpcInvocation =
                 createRpcInvocationMessage(
                         method.getDeclaringClass().getSimpleName(),
@@ -230,15 +249,16 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
                         parameterTypes,
                         args);
 
+        // 方法调用是否存在返回值
         Class<?> returnType = method.getReturnType();
-
         final Object result;
 
+        // 不存在方法调用返回值(tell)
         if (Objects.equals(returnType, Void.TYPE)) {
             tell(rpcInvocation);
-
             result = null;
         } else {
+            // 存在方法调用返回值(ask)
             // Capture the call stack. It is significantly faster to do that via an exception than
             // via Thread.getStackTrace(), because exceptions lazily initialize the stack trace,
             // initially only
@@ -293,7 +313,9 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
      * @param isLocalRpcInvocation whether the RPC must be sent as a local message
      * @param parameterTypes of the RPC
      * @param args of the RPC
+     *
      * @return RpcInvocation message which encapsulates the RPC details
+     *
      * @throws IOException if we cannot serialize the RPC invocation parameters
      */
     private RpcInvocation createRpcInvocationMessage(
@@ -328,7 +350,8 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
      * @param parameterAnnotations Parameter annotations
      * @param args Array of arguments
      * @param defaultTimeout Default timeout to return if no {@link RpcTimeout} annotated parameter
-     *     has been found
+     *         has been found
+     *
      * @return Timeout extracted from the array of arguments or the default timeout
      */
     private static Duration extractRpcTimeout(
@@ -363,6 +386,7 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
      * Checks whether any of the annotations is of type {@link RpcTimeout}.
      *
      * @param annotations Array of annotations
+     *
      * @return True if {@link RpcTimeout} was found; otherwise false
      */
     private static boolean isRpcTimeout(Annotation[] annotations) {
@@ -389,7 +413,8 @@ class AkkaInvocationHandler implements InvocationHandler, AkkaBasedEndpoint, Rpc
      *
      * @param message to send to the RPC endpoint
      * @param timeout time to wait until the response future is failed with a {@link
-     *     TimeoutException}
+     *         TimeoutException}
+     *
      * @return Response future
      */
     protected CompletableFuture<?> ask(Object message, Duration timeout) {

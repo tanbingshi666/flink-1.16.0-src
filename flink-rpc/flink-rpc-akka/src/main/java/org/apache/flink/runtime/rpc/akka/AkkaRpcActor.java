@@ -105,7 +105,8 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
 
     private volatile RpcEndpointTerminationResult rpcEndpointTerminationResult;
 
-    @Nonnull private State state;
+    @Nonnull
+    private State state;
 
     AkkaRpcActor(
             final T rpcEndpoint,
@@ -154,8 +155,11 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
     @Override
     public Receive createReceive() {
         return ReceiveBuilder.create()
+                // 处理握手消息
                 .match(RemoteHandshakeMessage.class, this::handleHandshakeMessage)
+                // 处理控制消息
                 .match(ControlMessages.class, this::handleControlMessage)
+                // 处理业务消息
                 .matchAny(this::handleMessage)
                 .build();
     }
@@ -165,6 +169,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
             mainThreadValidator.enterMainThread();
 
             try {
+                // 处理 RPC 消息
                 handleRpcMessage(message);
             } finally {
                 mainThreadValidator.exitMainThread();
@@ -179,7 +184,8 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                     new EndpointNotStartedException(
                             String.format(
                                     "Discard message %s, because the rpc endpoint %s has not been started yet.",
-                                    message, rpcEndpoint.getAddress())));
+                                    message,
+                                    rpcEndpoint.getAddress())));
         }
     }
 
@@ -219,6 +225,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
         } else if (message instanceof CallAsync) {
             handleCallAsync((CallAsync) message);
         } else if (message instanceof RpcInvocation) {
+            // 处理 RpcInvocation
             handleRpcInvocation((RpcInvocation) message);
         } else {
             log.warn(
@@ -237,12 +244,15 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
     }
 
     private void handleHandshakeMessage(RemoteHandshakeMessage handshakeMessage) {
+        // 版本是否兼容
         if (!isCompatibleVersion(handshakeMessage.getVersion())) {
             sendErrorIfSender(
                     new AkkaHandshakeException(
                             String.format(
                                     "Version mismatch between source (%s) and target (%s) rpc component. Please verify that all components have the same version.",
-                                    handshakeMessage.getVersion(), getVersion())));
+                                    handshakeMessage.getVersion(),
+                                    getVersion())));
+            // 协议是否支持
         } else if (!isGatewaySupported(handshakeMessage.getRpcGateway())) {
             sendErrorIfSender(
                     new AkkaHandshakeException(
@@ -250,6 +260,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                                     "The rpc endpoint does not support the gateway %s.",
                                     handshakeMessage.getRpcGateway().getSimpleName())));
         } else {
+            // 回复握手成功消息
             getSender().tell(new Status.Success(HandshakeSuccessMessage.INSTANCE), getSelf());
         }
     }
@@ -277,9 +288,11 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
         Method rpcMethod = null;
 
         try {
+            // 解析远程 RPC 发送消息执行哪个方法
             String methodName = rpcInvocation.getMethodName();
+            // 执行哪个方法的参数
             Class<?>[] parameterTypes = rpcInvocation.getParameterTypes();
-
+            // 找到对应的执行方法
             rpcMethod = lookupRpcMethod(methodName, parameterTypes);
         } catch (final NoSuchMethodException e) {
             log.error("Could not find rpc method for rpc invocation.", e);
@@ -297,12 +310,14 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                 final Method capturedRpcMethod = rpcMethod;
                 if (rpcMethod.getReturnType().equals(Void.TYPE)) {
                     // No return value to send back
+                    // 没有返回值
                     runWithContextClassLoader(
                             () -> capturedRpcMethod.invoke(rpcEndpoint, rpcInvocation.getArgs()),
                             flinkClassLoader);
                 } else {
                     final Object result;
                     try {
+                        // 有返回值
                         result =
                                 runWithContextClassLoader(
                                         () ->
@@ -322,6 +337,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                     final boolean isLocalRpcInvocation =
                             rpcMethod.getAnnotation(Local.class) != null;
 
+                    // 异步返回 RPC 请求结果
                     if (result instanceof CompletableFuture) {
                         final CompletableFuture<?> responseFuture = (CompletableFuture<?>) result;
                         sendAsyncResponse(responseFuture, methodName, isLocalRpcInvocation);
@@ -368,8 +384,8 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
                                         || (forceSerialization && !isLocalRpcInvocation)) {
                                     Either<AkkaRpcSerializedValue, AkkaRpcException>
                                             serializedResult =
-                                                    serializeRemoteResultAndVerifySize(
-                                                            value, methodName);
+                                            serializeRemoteResultAndVerifySize(
+                                                    value, methodName);
 
                                     if (serializedResult.isLeft()) {
                                         promise.success(serializedResult.left());
@@ -480,9 +496,11 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
      *
      * @param methodName Name of the method
      * @param parameterTypes Parameter types of the method
+     *
      * @return Method of the rpc endpoint
+     *
      * @throws NoSuchMethodException Thrown if the method with the given name and parameter types
-     *     cannot be found at the rpc endpoint
+     *         cannot be found at the rpc endpoint
      */
     private Method lookupRpcMethod(final String methodName, final Class<?>[] parameterTypes)
             throws NoSuchMethodException {
@@ -504,6 +522,7 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
      * Hook to envelope self messages.
      *
      * @param message to envelope
+     *
      * @return enveloped message
      */
     protected Object envelopeSelfMessage(Object message) {
@@ -672,7 +691,8 @@ class AkkaRpcActor<T extends RpcEndpoint & RpcGateway> extends AbstractActor {
         private static final RpcEndpointTerminationResult SUCCESS =
                 new RpcEndpointTerminationResult(null);
 
-        @Nullable private final Throwable failureCause;
+        @Nullable
+        private final Throwable failureCause;
 
         private RpcEndpointTerminationResult(@Nullable Throwable failureCause) {
             this.failureCause = failureCause;
