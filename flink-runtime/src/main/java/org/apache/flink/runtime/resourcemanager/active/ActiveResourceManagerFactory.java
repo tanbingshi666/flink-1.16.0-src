@@ -113,7 +113,10 @@ public abstract class ActiveResourceManagerFactory<WorkerType extends ResourceID
                 configuration.get(
                         ResourceManagerOptions.RESOURCE_MANAGER_PREVIOUS_WORKER_RECOVERY_TIMEOUT);
 
+        // 创建 ActiveResourceManager 继承于 ResourceManager (是一个 RPC Actor)
+        // ActiveResourceManager 也是一个 RPC Actor
         return new ActiveResourceManager<>(
+                // 创建资源管理驱动 YarnResourceManagerDriver
                 createResourceManagerDriver(
                         configuration, webInterfaceUrl, rpcService.getAddress()),
                 configuration,
@@ -146,7 +149,8 @@ public abstract class ActiveResourceManagerFactory<WorkerType extends ResourceID
             throw new IllegalConfigurationException(
                     String.format(
                             "Configured max start worker failure rate ('%s') must be larger than 0. Current: %f",
-                            ResourceManagerOptions.START_WORKER_MAX_FAILURE_RATE.key(), rate));
+                            ResourceManagerOptions.START_WORKER_MAX_FAILURE_RATE.key(),
+                            rate));
         }
         return new ThresholdMeter(rate, Duration.ofMinutes(1));
     }

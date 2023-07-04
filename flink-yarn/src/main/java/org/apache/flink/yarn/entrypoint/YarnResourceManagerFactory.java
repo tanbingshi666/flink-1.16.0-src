@@ -38,7 +38,8 @@ public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<Yar
 
     private static final YarnResourceManagerFactory INSTANCE = new YarnResourceManagerFactory();
 
-    private YarnResourceManagerFactory() {}
+    private YarnResourceManagerFactory() {
+    }
 
     public static YarnResourceManagerFactory getInstance() {
         return INSTANCE;
@@ -47,21 +48,27 @@ public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<Yar
     @Override
     protected ResourceManagerDriver<YarnWorkerNode> createResourceManagerDriver(
             Configuration configuration, String webInterfaceUrl, String rpcAddress) {
+        // 创建 YarnResourceManagerDriverConfiguration
+        // 里面从环境变量获取对应的部署任务信息
         final YarnResourceManagerDriverConfiguration yarnResourceManagerDriverConfiguration =
                 new YarnResourceManagerDriverConfiguration(
                         System.getenv(), rpcAddress, webInterfaceUrl);
 
+        // 创建 YarnResourceManagerDriver
         return new YarnResourceManagerDriver(
                 configuration,
                 yarnResourceManagerDriverConfiguration,
+                // DefaultYarnResourceManagerClientFactory
                 DefaultYarnResourceManagerClientFactory.getInstance(),
+                // DefaultYarnNodeManagerClientFactory
                 DefaultYarnNodeManagerClientFactory.getInstance());
     }
 
     @Override
     protected ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
-                    throws ConfigurationException {
+    createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            throws ConfigurationException {
+        // 创建 ResourceManagerRuntimeServicesConfiguration
         return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(
                 configuration, YarnWorkerResourceSpecFactory.INSTANCE);
     }

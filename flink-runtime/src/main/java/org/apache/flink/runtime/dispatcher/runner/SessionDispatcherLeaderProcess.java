@@ -72,7 +72,7 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
             Executor ioExecutor,
             FatalErrorHandler fatalErrorHandler) {
         super(leaderSessionId, fatalErrorHandler);
-
+        // ApplicationDispatcherGatewayServiceFactory
         this.dispatcherGatewayServiceFactory = dispatcherGatewayServiceFactory;
         this.jobGraphStore = jobGraphStore;
         this.jobResultStore = jobResultStore;
@@ -81,14 +81,17 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
 
     @Override
     protected void onStart() {
+        // 启动服务 也即恢复之前 JobGraph (暂时忽略)
         startServices();
 
+        // 创建 Dispatcher 并恢复 JobGraph
         onGoingRecoveryOperation =
                 createDispatcherBasedOnRecoveredJobGraphsAndRecoveredDirtyJobResults();
     }
 
     private void startServices() {
         try {
+            // StandaloneJobGraphStore
             jobGraphStore.start(this);
         } catch (Exception e) {
             throw new FlinkRuntimeException(
@@ -101,13 +104,18 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
 
     private void createDispatcherIfRunning(
             Collection<JobGraph> jobGraphs, Collection<JobResult> recoveredDirtyJobResults) {
-        runIfStateIs(State.RUNNING, () -> createDispatcher(jobGraphs, recoveredDirtyJobResults));
+        runIfStateIs(
+                State.RUNNING,
+                // 创建 Dispatcher
+                () -> createDispatcher(jobGraphs, recoveredDirtyJobResults));
     }
 
     private void createDispatcher(
             Collection<JobGraph> jobGraphs, Collection<JobResult> recoveredDirtyJobResults) {
 
+        // 创建 Dispatcher DefaultDispatcherGatewayService
         final DispatcherGatewayService dispatcherService =
+                // 调用 ApplicationDispatcherGatewayServiceFactory.create()
                 dispatcherGatewayServiceFactory.create(
                         DispatcherId.fromUuid(getLeaderSessionId()),
                         jobGraphs,
@@ -115,11 +123,13 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
                         jobGraphStore,
                         jobResultStore);
 
+        // 完成 Dispatcher 设置
         completeDispatcherSetup(dispatcherService);
     }
 
     private CompletableFuture<Void>
-            createDispatcherBasedOnRecoveredJobGraphsAndRecoveredDirtyJobResults() {
+    createDispatcherBasedOnRecoveredJobGraphsAndRecoveredDirtyJobResults() {
+        // 获取之前 JobGraph (宕机之前或者持久化的 忽略)
         final CompletableFuture<Collection<JobResult>> dirtyJobsFuture =
                 CompletableFuture.supplyAsync(this::getDirtyJobResultsIfRunning, ioExecutor);
 
@@ -131,7 +141,10 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
                                                 .map(JobResult::getJobId)
                                                 .collect(Collectors.toSet())),
                         ioExecutor)
-                .thenAcceptBoth(dirtyJobsFuture, this::createDispatcherIfRunning)
+                .thenAcceptBoth(
+                        dirtyJobsFuture,
+                        // 创建 Dispatcher
+                        this::createDispatcherIfRunning)
                 .handle(this::onErrorIfRunning);
     }
 
@@ -318,6 +331,7 @@ public class SessionDispatcherLeaderProcess extends AbstractDispatcherLeaderProc
             JobResultStore jobResultStore,
             Executor ioExecutor,
             FatalErrorHandler fatalErrorHandler) {
+        // 创建 SessionDispatcherLeaderProcess
         return new SessionDispatcherLeaderProcess(
                 leaderSessionId,
                 dispatcherFactory,

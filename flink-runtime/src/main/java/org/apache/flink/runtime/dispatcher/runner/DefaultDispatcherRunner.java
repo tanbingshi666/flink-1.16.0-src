@@ -62,8 +62,10 @@ public final class DefaultDispatcherRunner implements DispatcherRunner, LeaderCo
             LeaderElectionService leaderElectionService,
             FatalErrorHandler fatalErrorHandler,
             DispatcherLeaderProcessFactory dispatcherLeaderProcessFactory) {
+        // StandaloneLeaderElectionService
         this.leaderElectionService = leaderElectionService;
         this.fatalErrorHandler = fatalErrorHandler;
+        // SessionDispatcherLeaderProcessFactory
         this.dispatcherLeaderProcessFactory = dispatcherLeaderProcessFactory;
         this.terminationFuture = new CompletableFuture<>();
         this.shutDownFuture = new CompletableFuture<>();
@@ -104,23 +106,30 @@ public final class DefaultDispatcherRunner implements DispatcherRunner, LeaderCo
     public void grantLeadership(UUID leaderSessionID) {
         runActionIfRunning(
                 () -> {
+                    // DefaultDispatcherRunner was granted leadership with leader id 00000000-0000-0000-0000-000000000000. Creating new DispatcherLeaderProcess
                     LOG.info(
                             "{} was granted leadership with leader id {}. Creating new {}.",
                             getClass().getSimpleName(),
                             leaderSessionID,
                             DispatcherLeaderProcess.class.getSimpleName());
+                    // 启动 Dispatcher Leader 选举
+                    // 创建 DispatcherLeaderProcess
                     startNewDispatcherLeaderProcess(leaderSessionID);
                 });
     }
 
     private void startNewDispatcherLeaderProcess(UUID leaderSessionID) {
+        // 先停止 DispatcherLeaderProcess
         stopDispatcherLeaderProcess();
 
+        // 再创建 DispatcherLeaderProcess
         dispatcherLeaderProcess = createNewDispatcherLeaderProcess(leaderSessionID);
 
         final DispatcherLeaderProcess newDispatcherLeaderProcess = dispatcherLeaderProcess;
         FutureUtils.assertNoException(
                 previousDispatcherLeaderProcessTerminationFuture.thenRun(
+                        // 启动 DispatcherLeaderProcess
+                        // 调用其父类 AbstractDispatcherLeaderProcess
                         newDispatcherLeaderProcess::start));
     }
 
@@ -134,9 +143,12 @@ public final class DefaultDispatcherRunner implements DispatcherRunner, LeaderCo
     }
 
     private DispatcherLeaderProcess createNewDispatcherLeaderProcess(UUID leaderSessionID) {
+        // 创建 DispatcherLeaderProcess
         final DispatcherLeaderProcess newDispatcherLeaderProcess =
+                // 调用 SessionDispatcherLeaderProcessFactory
                 dispatcherLeaderProcessFactory.create(leaderSessionID);
 
+        // 注册 shutdown
         forwardShutDownFuture(newDispatcherLeaderProcess);
         forwardConfirmLeaderSessionFuture(leaderSessionID, newDispatcherLeaderProcess);
 
@@ -153,7 +165,7 @@ public final class DefaultDispatcherRunner implements DispatcherRunner, LeaderCo
                                 // valid
                                 if (running
                                         && this.dispatcherLeaderProcess
-                                                == newDispatcherLeaderProcess) {
+                                        == newDispatcherLeaderProcess) {
                                     if (throwable != null) {
                                         shutDownFuture.completeExceptionally(throwable);
                                     } else {
@@ -218,9 +230,11 @@ public final class DefaultDispatcherRunner implements DispatcherRunner, LeaderCo
             FatalErrorHandler fatalErrorHandler,
             DispatcherLeaderProcessFactory dispatcherLeaderProcessFactory)
             throws Exception {
+        // 创建 DefaultDispatcherRunner
         final DefaultDispatcherRunner dispatcherRunner =
                 new DefaultDispatcherRunner(
                         leaderElectionService, fatalErrorHandler, dispatcherLeaderProcessFactory);
+        // 创建 DispatcherRunnerLeaderElectionLifecycleManager
         return DispatcherRunnerLeaderElectionLifecycleManager.createFor(
                 dispatcherRunner, leaderElectionService);
     }

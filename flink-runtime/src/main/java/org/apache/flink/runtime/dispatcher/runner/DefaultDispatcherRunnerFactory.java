@@ -37,6 +37,7 @@ public class DefaultDispatcherRunnerFactory implements DispatcherRunnerFactory {
 
     public DefaultDispatcherRunnerFactory(
             DispatcherLeaderProcessFactoryFactory dispatcherLeaderProcessFactoryFactory) {
+        // ApplicationDispatcherLeaderProcessFactoryFactory
         this.dispatcherLeaderProcessFactoryFactory = dispatcherLeaderProcessFactoryFactory;
     }
 
@@ -50,6 +51,7 @@ public class DefaultDispatcherRunnerFactory implements DispatcherRunnerFactory {
             PartialDispatcherServices partialDispatcherServices)
             throws Exception {
 
+        // 创建 SessionDispatcherLeaderProcessFactory
         final DispatcherLeaderProcessFactory dispatcherLeaderProcessFactory =
                 dispatcherLeaderProcessFactoryFactory.createFactory(
                         jobPersistenceComponentFactory,
@@ -58,6 +60,7 @@ public class DefaultDispatcherRunnerFactory implements DispatcherRunnerFactory {
                         partialDispatcherServices,
                         fatalErrorHandler);
 
+        // 创建 DispatcherRunnerLeaderElectionLifecycleManager
         return DefaultDispatcherRunner.create(
                 leaderElectionService, fatalErrorHandler, dispatcherLeaderProcessFactory);
     }

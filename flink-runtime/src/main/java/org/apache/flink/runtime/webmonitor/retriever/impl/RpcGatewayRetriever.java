@@ -63,6 +63,7 @@ public class RpcGatewayRetriever<F extends Serializable, T extends FencedRpcGate
                 () ->
                         leaderFuture.thenCompose(
                                 (Tuple2<String, UUID> addressLeaderTuple) ->
+                                        // 连接 RPC Actor 返回 ActorRef
                                         rpcService.connect(
                                                 addressLeaderTuple.f0,
                                                 fencingTokenMapper.apply(addressLeaderTuple.f1),

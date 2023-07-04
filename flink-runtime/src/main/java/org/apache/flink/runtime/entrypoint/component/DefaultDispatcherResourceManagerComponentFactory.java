@@ -85,18 +85,24 @@ public class DefaultDispatcherResourceManagerComponentFactory
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    @Nonnull private final DispatcherRunnerFactory dispatcherRunnerFactory;
+    @Nonnull
+    private final DispatcherRunnerFactory dispatcherRunnerFactory;
 
-    @Nonnull private final ResourceManagerFactory<?> resourceManagerFactory;
+    @Nonnull
+    private final ResourceManagerFactory<?> resourceManagerFactory;
 
-    @Nonnull private final RestEndpointFactory<?> restEndpointFactory;
+    @Nonnull
+    private final RestEndpointFactory<?> restEndpointFactory;
 
     public DefaultDispatcherResourceManagerComponentFactory(
             @Nonnull DispatcherRunnerFactory dispatcherRunnerFactory,
             @Nonnull ResourceManagerFactory<?> resourceManagerFactory,
             @Nonnull RestEndpointFactory<?> restEndpointFactory) {
+        // Dispatcher 工厂 DefaultDispatcherRunnerFactory
         this.dispatcherRunnerFactory = dispatcherRunnerFactory;
+        // ResourceManager 工厂 YarnResourceManagerFactory
         this.resourceManagerFactory = resourceManagerFactory;
+        // RestEndpoint 工厂 JobRestEndpointFactory
         this.restEndpointFactory = restEndpointFactory;
     }
 
@@ -123,12 +129,18 @@ public class DefaultDispatcherResourceManagerComponentFactory
         DispatcherRunner dispatcherRunner = null;
 
         try {
+            // Dispatcher Leader 检索服务 StandaloneLeaderRetrievalService
+            // 在 Flink Standalone 模式下 JobManager 存在 HA 故 Dispatcher 也存在 HA
+            // 由于提交程序任务基于 flink-on-yarn 暂时不用考虑 HA
             dispatcherLeaderRetrievalService =
                     highAvailabilityServices.getDispatcherLeaderRetriever();
-
+            // 同上
             resourceManagerRetrievalService =
                     highAvailabilityServices.getResourceManagerLeaderRetriever();
 
+            // 创建检索 RPC 服务 RpcGatewayRetriever
+            // 这里封装 Dispatcher Actor 基础信息 但是还没有启动该 Actor
+            // 该 Actor 的通讯协议接口为 DispatcherGateway
             final LeaderGatewayRetriever<DispatcherGateway> dispatcherGatewayRetriever =
                     new RpcGatewayRetriever<>(
                             rpcService,
@@ -136,7 +148,8 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             DispatcherId::fromUuid,
                             new ExponentialBackoffRetryStrategy(
                                     12, Duration.ofMillis(10), Duration.ofMillis(50)));
-
+            // 同上
+            // 该 Actor 的通讯协议接口为 ResourceManagerGateway
             final LeaderGatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever =
                     new RpcGatewayRetriever<>(
                             rpcService,
@@ -145,6 +158,8 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             new ExponentialBackoffRetryStrategy(
                                     12, Duration.ofMillis(10), Duration.ofMillis(50)));
 
+            // 创建 RestEndpoint 调度执行线程池
+            // 比如在 Flink Standalone 集群上 可以基于 Web UI 提交任务
             final ScheduledExecutorService executor =
                     WebMonitorEndpoint.createExecutorService(
                             configuration.getInteger(RestOptions.SERVER_NUM_THREADS),
@@ -157,11 +172,12 @@ public class DefaultDispatcherResourceManagerComponentFactory
                     updateInterval == 0
                             ? VoidMetricFetcher.INSTANCE
                             : MetricFetcherImpl.fromConfiguration(
-                                    configuration,
-                                    metricQueryServiceRetriever,
-                                    dispatcherGatewayRetriever,
-                                    executor);
+                            configuration,
+                            metricQueryServiceRetriever,
+                            dispatcherGatewayRetriever,
+                            executor);
 
+            // 创建 RestEndpoint MiniDispatcherRestEndpoint
             webMonitorEndpoint =
                     restEndpointFactory.createRestEndpoint(
                             configuration,
@@ -170,14 +186,17 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             blobServer,
                             executor,
                             metricFetcher,
+                            // 创建 Leader HA 选举服务 StandaloneLeaderElectionService
                             highAvailabilityServices.getClusterRestEndpointLeaderElectionService(),
                             fatalErrorHandler);
-
             log.debug("Starting Dispatcher REST endpoint.");
+            // 启动 RestEndpoint (基于 Netty 创建 http server)
             webMonitorEndpoint.start();
 
             final String hostname = RpcUtils.getHostname(rpcService);
 
+            // 创建 ResourceManager 服务 ResourceManagerServiceImpl
+            // 里面主要初始化一些配置 注意还没有启动 ResourceManager 这个 Actor
             resourceManagerService =
                     ResourceManagerServiceImpl.create(
                             resourceManagerFactory,
@@ -189,19 +208,23 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             delegationTokenManager,
                             fatalErrorHandler,
                             new ClusterInformation(hostname, blobServer.getPort()),
+                            // RestEndpoint 地址
                             webMonitorEndpoint.getRestBaseUrl(),
                             metricRegistry,
                             hostname,
                             ioExecutor);
 
+            // 历史服务归档
             final HistoryServerArchivist historyServerArchivist =
                     HistoryServerArchivist.createHistoryServerArchivist(
                             configuration, webMonitorEndpoint, ioExecutor);
 
+            // 创建 DispatcherOperationCaches
             final DispatcherOperationCaches dispatcherOperationCaches =
                     new DispatcherOperationCaches(
                             configuration.get(RestOptions.ASYNC_OPERATION_STORE_DURATION));
 
+            // 创建 PartialDispatcherServices
             final PartialDispatcherServices partialDispatcherServices =
                     new PartialDispatcherServices(
                             configuration,
@@ -220,8 +243,11 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             dispatcherOperationCaches);
 
             log.debug("Starting Dispatcher.");
+            // 创建并启动 Dispatcher DispatcherRunnerLeaderElectionLifecycleManager
+            // 里面内容基本都是封装再封装、 Dispatcher 选举相关的以及启动 Dispatcher RPC Actor
             dispatcherRunner =
                     dispatcherRunnerFactory.createDispatcherRunner(
+                            // StandaloneLeaderElectionService
                             highAvailabilityServices.getDispatcherLeaderElectionService(),
                             fatalErrorHandler,
                             new HaServicesJobPersistenceComponentFactory(highAvailabilityServices),
@@ -230,11 +256,17 @@ public class DefaultDispatcherResourceManagerComponentFactory
                             partialDispatcherServices);
 
             log.debug("Starting ResourceManagerService.");
+            // 启动 ResourceManager
             resourceManagerService.start();
 
+            // 检索 ResourceManager 服务 调用 StandaloneLeaderRetrievalService.start()
+            // 进而调用 LeaderGatewayRetriever.notifyLeaderAddress() -> RpcGatewayRetriever.createGateway()
+            // 基于 akka Actor Connect 方式连接 ResourceManager RPC Actor
             resourceManagerRetrievalService.start(resourceManagerGatewayRetriever);
+            // 同上 检索 Dispatcher Actor
             dispatcherLeaderRetrievalService.start(dispatcherGatewayRetriever);
 
+            // 创建 DispatcherResourceManagerComponent
             return new DispatcherResourceManagerComponent(
                     dispatcherRunner,
                     resourceManagerService,

@@ -69,7 +69,8 @@ public abstract class AbstractDispatcherLeaderProcess implements DispatcherLeade
 
     private State state;
 
-    @Nullable private DispatcherGatewayService dispatcherService;
+    @Nullable
+    private DispatcherGatewayService dispatcherService;
 
     AbstractDispatcherLeaderProcess(UUID leaderSessionId, FatalErrorHandler fatalErrorHandler) {
         this.leaderSessionId = leaderSessionId;
@@ -92,12 +93,15 @@ public abstract class AbstractDispatcherLeaderProcess implements DispatcherLeade
 
     @Override
     public final void start() {
+        // 启动
         runIfStateIs(State.CREATED, this::startInternal);
     }
 
     private void startInternal() {
+        // Start SessionDispatcherLeaderProcess
         log.info("Start {}.", getClass().getSimpleName());
         state = State.RUNNING;
+        // 调用 SessionDispatcherLeaderProcess.onStart()
         onStart();
     }
 

@@ -27,16 +27,19 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 
 final class DispatcherRunnerLeaderElectionLifecycleManager<
-                T extends DispatcherRunner & LeaderContender>
+        T extends DispatcherRunner & LeaderContender>
         implements DispatcherRunner {
     private final T dispatcherRunner;
     private final LeaderElectionService leaderElectionService;
 
     private DispatcherRunnerLeaderElectionLifecycleManager(
             T dispatcherRunner, LeaderElectionService leaderElectionService) throws Exception {
+        // DefaultDispatcherRunner
         this.dispatcherRunner = dispatcherRunner;
+        // StandaloneLeaderElectionService
         this.leaderElectionService = leaderElectionService;
 
+        // 启动选举 Dispatcher
         leaderElectionService.start(dispatcherRunner);
     }
 
@@ -67,6 +70,7 @@ final class DispatcherRunnerLeaderElectionLifecycleManager<
 
     public static <T extends DispatcherRunner & LeaderContender> DispatcherRunner createFor(
             T dispatcherRunner, LeaderElectionService leaderElectionService) throws Exception {
+        // 创建 DispatcherRunnerLeaderElectionLifecycleManager
         return new DispatcherRunnerLeaderElectionLifecycleManager<>(
                 dispatcherRunner, leaderElectionService);
     }

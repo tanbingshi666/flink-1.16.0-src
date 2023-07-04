@@ -43,9 +43,15 @@ public class StandaloneLeaderElectionService implements LeaderElectionService {
                     "Leader election service cannot be started multiple times.");
         }
 
+        // 如果是 RestEndpoint  newContender -> WebMonitorEndpoint
+        // 如果是 Dispatcher    newContender -> DefaultDispatcherRunner
+        // 如果是 ResourceManager newContender -> ResourceManagerServiceImpl
         contender = Preconditions.checkNotNull(newContender);
 
         // directly grant leadership to the given contender
+        // 如果是 RestEndpoint 调用 WebMonitorEndpoint.grantLeadership() 啥也不干
+        // 如果是 Dispatcher 调用 DefaultDispatcherRunner.grantLeadership() 基本啥也不干
+        // 如果是 ResourceManager 调用 ResourceManagerServiceImpl.grantLeadership()
         contender.grantLeadership(HighAvailabilityServices.DEFAULT_LEADER_ID);
     }
 
@@ -58,7 +64,8 @@ public class StandaloneLeaderElectionService implements LeaderElectionService {
     }
 
     @Override
-    public void confirmLeadership(UUID leaderSessionID, String leaderAddress) {}
+    public void confirmLeadership(UUID leaderSessionID, String leaderAddress) {
+    }
 
     @Override
     public boolean hasLeadership(@Nonnull UUID leaderSessionId) {

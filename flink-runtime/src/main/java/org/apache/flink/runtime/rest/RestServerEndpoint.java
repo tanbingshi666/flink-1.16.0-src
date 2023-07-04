@@ -93,7 +93,8 @@ public abstract class RestServerEndpoint implements RestService {
     private final String restAddress;
     private final String restBindAddress;
     private final String restBindPortRange;
-    @Nullable private final SSLHandlerFactory sslHandlerFactory;
+    @Nullable
+    private final SSLHandlerFactory sslHandlerFactory;
     private final int maxContentLength;
 
     protected final Path uploadDir;
@@ -109,7 +110,8 @@ public abstract class RestServerEndpoint implements RestService {
 
     private State state = State.CREATED;
 
-    @VisibleForTesting List<InboundChannelHandlerFactory> inboundChannelHandlerFactories;
+    @VisibleForTesting
+    List<InboundChannelHandlerFactory> inboundChannelHandlerFactories;
 
     public RestServerEndpoint(Configuration configuration)
             throws IOException, ConfigurationException {
@@ -157,10 +159,11 @@ public abstract class RestServerEndpoint implements RestService {
      * REST server endpoint implementation requires.
      *
      * @param localAddressFuture future rest address of the RestServerEndpoint
+     *
      * @return Collection of AbstractRestHandler which are added to the server endpoint
      */
     protected abstract List<Tuple2<RestHandlerSpecification, ChannelInboundHandler>>
-            initializeHandlers(final CompletableFuture<String> localAddressFuture);
+    initializeHandlers(final CompletableFuture<String> localAddressFuture);
 
     /**
      * Starts this REST server endpoint.
@@ -174,11 +177,16 @@ public abstract class RestServerEndpoint implements RestService {
 
             log.info("Starting rest endpoint.");
 
+            // Http 路由器
+            // 比如说 RestServerEndpoint 接受一个 Http 请求经过统一 Handler 处理之后
+            // 路由到 Router 该 Router 绑定了很多 URL -> Handler 根据 URL 找到对应的 Handler 进行处理
             final Router router = new Router();
             final CompletableFuture<String> restAddressFuture = new CompletableFuture<>();
 
+            // 初始化一大推 Handler
             handlers = initializeHandlers(restAddressFuture);
 
+            // 比如可以访问 http://ip:port/jobs
             /* sort the handlers such that they are ordered the following:
              * /jobs
              * /jobs/overview
@@ -186,18 +194,20 @@ public abstract class RestServerEndpoint implements RestService {
              * /jobs/:jobid/config
              * /:*
              */
+            // 排序为了去重
             Collections.sort(handlers, RestHandlerUrlComparator.INSTANCE);
-
             checkAllEndpointsAndHandlersAreUnique(handlers);
+
+            // 将 handler 注册到路由 Router
             handlers.forEach(handler -> registerHandler(router, handler, log));
 
+            // 后续都是 netty 服务的标配启动步骤
             ChannelInitializer<SocketChannel> initializer =
                     new ChannelInitializer<SocketChannel>() {
 
                         @Override
                         protected void initChannel(SocketChannel ch) throws ConfigurationException {
                             RouterHandler handler = new RouterHandler(router, responseHeaders);
-
                             // SSL should be the first handler in the pipeline
                             if (isHttpsEnabled()) {
                                 ch.pipeline()
@@ -208,14 +218,12 @@ public abstract class RestServerEndpoint implements RestService {
                                                         restAddressFuture,
                                                         sslHandlerFactory));
                             }
-
                             ch.pipeline()
                                     .addLast(new HttpServerCodec())
                                     .addLast(new FileUploadHandler(uploadDir))
                                     .addLast(
                                             new FlinkHttpObjectAggregator(
                                                     maxContentLength, responseHeaders));
-
                             for (InboundChannelHandlerFactory factory :
                                     inboundChannelHandlerFactories) {
                                 Optional<ChannelHandler> channelHandler =
@@ -224,21 +232,18 @@ public abstract class RestServerEndpoint implements RestService {
                                     ch.pipeline().addLast(channelHandler.get());
                                 }
                             }
-
                             ch.pipeline()
                                     .addLast(new ChunkedWriteHandler())
                                     .addLast(handler.getName(), handler)
                                     .addLast(new PipelineErrorHandler(log, responseHeaders));
                         }
                     };
-
             NioEventLoopGroup bossGroup =
                     new NioEventLoopGroup(
                             1, new ExecutorThreadFactory("flink-rest-server-netty-boss"));
             NioEventLoopGroup workerGroup =
                     new NioEventLoopGroup(
                             0, new ExecutorThreadFactory("flink-rest-server-netty-worker"));
-
             bootstrap = new ServerBootstrap();
             bootstrap
                     .group(bossGroup, workerGroup)
@@ -254,7 +259,6 @@ public abstract class RestServerEndpoint implements RestService {
                 throw new IllegalArgumentException(
                         "Invalid port range definition: " + restBindPortRange);
             }
-
             int chosenPort = 0;
             while (portsIterator.hasNext()) {
                 try {
@@ -295,14 +299,15 @@ public abstract class RestServerEndpoint implements RestService {
 
             port = bindAddress.getPort();
 
+            // Rest endpoint listening at 192.168.136.103:41389
             log.info("Rest endpoint listening at {}:{}", advertisedAddress, port);
 
             restBaseUrl = new URL(determineProtocol(), advertisedAddress, port, "").toString();
-
             restAddressFuture.complete(restBaseUrl);
-
             state = State.RUNNING;
 
+            // 启动 RestEndpoint 内部 HA 选举
+            // 基于 flink-on-yarn 是没有 HA 选举的 里面内容也不是很重要
             startInternal();
         }
     }
@@ -589,8 +594,9 @@ public abstract class RestServerEndpoint implements RestService {
      *
      * @param uploadDir directory to check
      * @param log logger used for logging output
+     *
      * @throws IOException if the directory does not exist and cannot be created, or if the
-     *     directory isn't writable
+     *         directory isn't writable
      */
     private static synchronized void checkAndCreateUploadDir(final Path uploadDir, final Logger log)
             throws IOException {
@@ -659,7 +665,7 @@ public abstract class RestServerEndpoint implements RestService {
      */
     public static final class RestHandlerUrlComparator
             implements Comparator<Tuple2<RestHandlerSpecification, ChannelInboundHandler>>,
-                    Serializable {
+            Serializable {
 
         private static final long serialVersionUID = 2388466767835547926L;
 

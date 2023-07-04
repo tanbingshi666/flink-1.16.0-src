@@ -207,7 +207,8 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
     private final Collection<JsonArchivist> archivingHandlers = new ArrayList<>(16);
 
-    @Nullable private ScheduledFuture<?> executionGraphCleanupTask;
+    @Nullable
+    private ScheduledFuture<?> executionGraphCleanupTask;
 
     public WebMonitorEndpoint(
             GatewayRetriever<? extends T> leaderRetriever,
@@ -535,11 +536,11 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
         final SavepointHandlers.StopWithSavepointHandler stopWithSavepointHandler =
                 savepointHandlers
-                .new StopWithSavepointHandler(leaderRetriever, timeout, responseHeaders);
+                        .new StopWithSavepointHandler(leaderRetriever, timeout, responseHeaders);
 
         final SavepointHandlers.SavepointTriggerHandler savepointTriggerHandler =
                 savepointHandlers
-                .new SavepointTriggerHandler(leaderRetriever, timeout, responseHeaders);
+                        .new SavepointTriggerHandler(leaderRetriever, timeout, responseHeaders);
 
         final SavepointHandlers.SavepointStatusHandler savepointStatusHandler =
                 new SavepointHandlers.SavepointStatusHandler(
@@ -557,13 +558,13 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
         final SubtaskExecutionAttemptAccumulatorsHandler
                 subtaskExecutionAttemptAccumulatorsHandler =
-                        new SubtaskExecutionAttemptAccumulatorsHandler(
-                                leaderRetriever,
-                                timeout,
-                                responseHeaders,
-                                SubtaskExecutionAttemptAccumulatorsHeaders.getInstance(),
-                                executionGraphCache,
-                                executor);
+                new SubtaskExecutionAttemptAccumulatorsHandler(
+                        leaderRetriever,
+                        timeout,
+                        responseHeaders,
+                        SubtaskExecutionAttemptAccumulatorsHeaders.getInstance(),
+                        executionGraphCache,
+                        executor);
 
         final SubtaskCurrentAttemptDetailsHandler subtaskCurrentAttemptDetailsHandler =
                 new SubtaskCurrentAttemptDetailsHandler(
@@ -580,11 +581,11 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
         final RescalingHandlers.RescalingTriggerHandler rescalingTriggerHandler =
                 rescalingHandlers
-                .new RescalingTriggerHandler(leaderRetriever, timeout, responseHeaders);
+                        .new RescalingTriggerHandler(leaderRetriever, timeout, responseHeaders);
 
         final RescalingHandlers.RescalingStatusHandler rescalingStatusHandler =
                 rescalingHandlers
-                .new RescalingStatusHandler(leaderRetriever, timeout, responseHeaders);
+                        .new RescalingStatusHandler(leaderRetriever, timeout, responseHeaders);
 
         final JobVertexBackPressureHandler jobVertexBackPressureHandler =
                 new JobVertexBackPressureHandler(
@@ -643,15 +644,15 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
         final SavepointDisposalHandlers.SavepointDisposalTriggerHandler
                 savepointDisposalTriggerHandler =
-                        savepointDisposalHandlers
+                savepointDisposalHandlers
                         .new SavepointDisposalTriggerHandler(
-                                leaderRetriever, timeout, responseHeaders);
+                        leaderRetriever, timeout, responseHeaders);
 
         final SavepointDisposalHandlers.SavepointDisposalStatusHandler
                 savepointDisposalStatusHandler =
-                        savepointDisposalHandlers
+                savepointDisposalHandlers
                         .new SavepointDisposalStatusHandler(
-                                leaderRetriever, timeout, responseHeaders);
+                        leaderRetriever, timeout, responseHeaders);
 
         final ClusterDataSetListHandler clusterDataSetListHandler =
                 new ClusterDataSetListHandler(
@@ -660,17 +661,17 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
                 new ClusterDataSetDeleteHandlers(asyncOperationStoreDuration);
         final ClusterDataSetDeleteHandlers.ClusterDataSetDeleteTriggerHandler
                 clusterDataSetDeleteTriggerHandler =
-                        clusterDataSetDeleteHandlers
+                clusterDataSetDeleteHandlers
                         .new ClusterDataSetDeleteTriggerHandler(
-                                leaderRetriever,
-                                timeout,
-                                responseHeaders,
-                                resourceManagerRetriever);
+                        leaderRetriever,
+                        timeout,
+                        responseHeaders,
+                        resourceManagerRetriever);
         final ClusterDataSetDeleteHandlers.ClusterDataSetDeleteStatusHandler
                 clusterDataSetDeleteStatusHandler =
-                        clusterDataSetDeleteHandlers
+                clusterDataSetDeleteHandlers
                         .new ClusterDataSetDeleteStatusHandler(
-                                leaderRetriever, timeout, responseHeaders);
+                        leaderRetriever, timeout, responseHeaders);
 
         final ClientCoordinationHandler clientCoordinationHandler =
                 new ClientCoordinationHandler(
@@ -995,16 +996,20 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
     }
 
     protected Collection<Tuple2<RestHandlerSpecification, ChannelInboundHandler>>
-            initializeWebSubmissionHandlers(final CompletableFuture<String> localAddressFuture) {
+    initializeWebSubmissionHandlers(final CompletableFuture<String> localAddressFuture) {
         return Collections.emptyList();
     }
 
     @Override
     public void startInternal() throws Exception {
+        // StandaloneLeaderElectionService.start() 啥也不干
         leaderElectionService.start(this);
+
+        // 定时清除过期的 ExecutionGraph
         startExecutionGraphCacheCleanupTask();
 
         if (hasWebUI) {
+            // Web frontend listening at http://192.168.136.103:41389
             log.info("Web frontend listening at {}.", getRestBaseUrl());
         }
     }
@@ -1063,10 +1068,12 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
     @Override
     public void grantLeadership(final UUID leaderSessionID) {
+        // http://192.168.136.103:41389 was granted leadership with leaderSessionID=00000000-0000-0000-0000-000000000000
         log.info(
                 "{} was granted leadership with leaderSessionID={}",
                 getRestBaseUrl(),
                 leaderSessionID);
+        // 啥也不干
         leaderElectionService.confirmLeadership(leaderSessionID, getRestBaseUrl());
     }
 

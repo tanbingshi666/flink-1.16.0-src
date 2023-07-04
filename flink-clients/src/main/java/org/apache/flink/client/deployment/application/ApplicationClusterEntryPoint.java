@@ -63,23 +63,33 @@ public class ApplicationClusterEntryPoint extends ClusterEntrypoint {
             final ResourceManagerFactory<?> resourceManagerFactory) {
         super(configuration);
         this.program = checkNotNull(program);
+        // resourceManagerFactory = YarnResourceManagerFactory
         this.resourceManagerFactory = checkNotNull(resourceManagerFactory);
     }
 
     @Override
     protected DispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(final Configuration configuration) {
+    createDispatcherResourceManagerComponentFactory(final Configuration configuration) {
+        // 三大组件工厂 DefaultDispatcherResourceManagerComponentFactory
         return new DefaultDispatcherResourceManagerComponentFactory(
+                // Dispatcher 工厂 DefaultDispatcherRunnerFactory
                 new DefaultDispatcherRunnerFactory(
+                        // 创建 ApplicationDispatcherLeaderProcessFactoryFactory
                         ApplicationDispatcherLeaderProcessFactoryFactory.create(
-                                configuration, SessionDispatcherFactory.INSTANCE, program)),
+                                configuration,
+                                // SessionDispatcherFactory
+                                SessionDispatcherFactory.INSTANCE,
+                                program)),
+                // ResourceManager 工厂 YarnResourceManagerFactory
                 resourceManagerFactory,
+                // RestEndpoint 工厂 JobRestEndpointFactory
                 JobRestEndpointFactory.INSTANCE);
     }
 
     @Override
     protected ExecutionGraphInfoStore createSerializableExecutionGraphStore(
             final Configuration configuration, final ScheduledExecutor scheduledExecutor) {
+        // 创建存储 ExecutionGraph 对象 MemoryExecutionGraphInfoStore
         return new MemoryExecutionGraphInfoStore();
     }
 

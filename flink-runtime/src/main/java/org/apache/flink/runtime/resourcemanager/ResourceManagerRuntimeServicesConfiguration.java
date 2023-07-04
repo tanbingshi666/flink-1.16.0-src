@@ -63,9 +63,9 @@ public class ResourceManagerRuntimeServicesConfiguration {
             Configuration configuration, WorkerResourceSpecFactory defaultWorkerResourceSpecFactory)
             throws ConfigurationException {
 
+        // Job 提交超时时间 默认 5min
         final String strJobTimeout = configuration.getString(ResourceManagerOptions.JOB_TIMEOUT);
         final Time jobTimeout;
-
         try {
             jobTimeout = Time.milliseconds(TimeUtils.parseDuration(strJobTimeout).toMillis());
         } catch (IllegalArgumentException e) {
@@ -77,8 +77,10 @@ public class ResourceManagerRuntimeServicesConfiguration {
                     e);
         }
 
+        // 根据配置以及 Yarn 配置解析 Worker(TM) 资源 WorkerResourceSpec
         final WorkerResourceSpec defaultWorkerResourceSpec =
                 defaultWorkerResourceSpecFactory.createDefaultWorkerResourceSpec(configuration);
+        // 根据配置解析 SlotManager 配置 SlotManagerConfiguration
         final SlotManagerConfiguration slotManagerConfiguration =
                 SlotManagerConfiguration.fromConfiguration(
                         configuration, defaultWorkerResourceSpec);
@@ -86,7 +88,10 @@ public class ResourceManagerRuntimeServicesConfiguration {
         final boolean enableFineGrainedResourceManagement =
                 ClusterOptions.isFineGrainedResourceManagementEnabled(configuration);
 
+        // 创建 ResourceManagerRuntimeServicesConfiguration
         return new ResourceManagerRuntimeServicesConfiguration(
-                jobTimeout, slotManagerConfiguration, enableFineGrainedResourceManagement);
+                jobTimeout,
+                slotManagerConfiguration,
+                enableFineGrainedResourceManagement);
     }
 }

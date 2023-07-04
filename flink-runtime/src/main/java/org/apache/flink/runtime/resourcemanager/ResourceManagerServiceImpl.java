@@ -83,6 +83,7 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
     private ResourceManagerServiceImpl(
             ResourceManagerFactory<?> resourceManagerFactory,
             ResourceManagerProcessContext rmProcessContext) {
+        // YarnResourceManagerFactory
         this.resourceManagerFactory = checkNotNull(resourceManagerFactory);
         this.rmProcessContext = checkNotNull(rmProcessContext);
 
@@ -116,8 +117,10 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
             running = true;
         }
 
+        // Starting resource manager service
         LOG.info("Starting resource manager service.");
 
+        // ResourceManager 选举相关
         leaderElectionService.start(this);
     }
 
@@ -196,11 +199,13 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
                             return;
                         }
 
+                        // Resource manager service is granted leadership with session id 00000000-0000-0000-0000-000000000000
                         LOG.info(
                                 "Resource manager service is granted leadership with session id {}.",
                                 newLeaderSessionID);
 
                         try {
+                            // 启动 ResourceManager 选举
                             startNewLeaderResourceManager(newLeaderSessionID);
                         } catch (Throwable t) {
                             fatalErrorHandler.onFatalError(
@@ -248,9 +253,11 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
 
     @GuardedBy("lock")
     private void startNewLeaderResourceManager(UUID newLeaderSessionID) throws Exception {
+        // 先停止 ResourceManager
         stopLeaderResourceManager();
 
         this.leaderSessionID = newLeaderSessionID;
+        // 创建 Leader ResourceManager ActiveResourceManager
         this.leaderResourceManager =
                 resourceManagerFactory.createResourceManager(rmProcessContext, newLeaderSessionID);
 
@@ -260,6 +267,8 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
                 .thenComposeAsync(
                         (ignore) -> {
                             synchronized (lock) {
+                                // 启动 ActiveResourceManager Actor
+                                // 调用其父类 ResourceManager.onStart()
                                 return startResourceManagerIfIsLeader(newLeaderResourceManager);
                             }
                         },
@@ -282,6 +291,7 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
     private CompletableFuture<Boolean> startResourceManagerIfIsLeader(
             ResourceManager<?> resourceManager) {
         if (isLeader(resourceManager)) {
+            // 启动 ResourceManager RPC Actor
             resourceManager.start();
             forwardTerminationFuture(resourceManager);
             return resourceManager.getStartedFuture().thenApply(ignore -> true);
@@ -356,8 +366,11 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
             Executor ioExecutor)
             throws ConfigurationException {
 
+        // 创建 ResourceManagerServiceImpl
         return new ResourceManagerServiceImpl(
+                // YarnResourceManagerFactory
                 resourceManagerFactory,
+                // ResourceManagerProcessContext
                 resourceManagerFactory.createResourceManagerProcessContext(
                         configuration,
                         resourceId,

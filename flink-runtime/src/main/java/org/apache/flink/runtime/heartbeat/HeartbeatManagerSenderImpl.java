@@ -45,6 +45,7 @@ public class HeartbeatManagerSenderImpl<I, O> extends HeartbeatManagerImpl<I, O>
             HeartbeatListener<I, O> heartbeatListener,
             ScheduledExecutor mainThreadExecutor,
             Logger log) {
+        // 创建心跳线程
         this(
                 heartbeatPeriod,
                 heartbeatTimeout,
@@ -73,8 +74,9 @@ public class HeartbeatManagerSenderImpl<I, O> extends HeartbeatManagerImpl<I, O>
                 mainThreadExecutor,
                 log,
                 heartbeatMonitorFactory);
-
         this.heartbeatPeriod = heartbeatPeriod;
+
+        // 运行心跳线程 调用其 run()
         mainThreadExecutor.schedule(this, 0L, TimeUnit.MILLISECONDS);
     }
 

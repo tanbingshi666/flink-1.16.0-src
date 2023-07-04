@@ -38,11 +38,14 @@ public class YarnWorkerResourceSpecFactory extends WorkerResourceSpecFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(YarnWorkerResourceSpecFactory.class);
 
-    private YarnWorkerResourceSpecFactory() {}
+    private YarnWorkerResourceSpecFactory() {
+    }
 
     @Override
     public WorkerResourceSpec createDefaultWorkerResourceSpec(Configuration configuration) {
-        return workerResourceSpecFromConfigAndCpu(configuration, getDefaultCpus(configuration));
+        return workerResourceSpecFromConfigAndCpu(
+                configuration,
+                getDefaultCpus(configuration));
     }
 
     @VisibleForTesting

@@ -99,8 +99,10 @@ public abstract class LeaderGatewayRetriever<T extends RpcGateway> extends Leade
     @Override
     public void notifyNewLeaderAddress(
             CompletableFuture<Tuple2<String, UUID>> newLeaderAddressFuture) {
+        // 创建连接 RPC Actor 返回 Gateway
         final CompletableFuture<T> newGatewayFuture = createGateway(newLeaderAddressFuture);
 
+        // 设置 Gateway
         final CompletableFuture<T> oldGatewayFuture =
                 atomicGatewayFuture.getAndSet(newGatewayFuture);
 

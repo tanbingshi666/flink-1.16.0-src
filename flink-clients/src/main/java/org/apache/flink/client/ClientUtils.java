@@ -64,7 +64,7 @@ public enum ClientUtils {
     }
 
     public static void executeProgram(
-            // 默认 DefaultExecutorServiceLoader
+            // 默认 EmbeddedExecutorServiceLoader
             PipelineExecutorServiceLoader executorServiceLoader,
             // flink-conf.yaml 参数 + 入口参数
             Configuration configuration,

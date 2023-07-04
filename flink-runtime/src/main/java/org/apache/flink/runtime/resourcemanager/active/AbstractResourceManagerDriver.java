@@ -89,6 +89,7 @@ public abstract class AbstractResourceManagerDriver<WorkerType extends ResourceI
         this.ioExecutor = Preconditions.checkNotNull(ioExecutor);
         this.blockedNodeRetriever = Preconditions.checkNotNull(blockedNodeRetriever);
 
+        // 初始化连接 Yarn RM
         initializeInternal();
     }
 

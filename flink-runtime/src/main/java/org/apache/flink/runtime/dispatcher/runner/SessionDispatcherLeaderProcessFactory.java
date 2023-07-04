@@ -49,6 +49,7 @@ public class SessionDispatcherLeaderProcessFactory implements DispatcherLeaderPr
 
     @Override
     public DispatcherLeaderProcess create(UUID leaderSessionID) {
+        // 创建 SessionDispatcherLeaderProcess
         return SessionDispatcherLeaderProcess.create(
                 leaderSessionID,
                 dispatcherGatewayServiceFactory,

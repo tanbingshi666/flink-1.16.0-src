@@ -43,7 +43,9 @@ public class AkkaBootstrapTools {
      * @param externalAddress The external address to access the ActorSystem.
      * @param externalPortRange The choosing range of the external port to access the ActorSystem.
      * @param logger The logger to output log information.
+     *
      * @return The ActorSystem which has been started
+     *
      * @throws Exception Thrown when actor system cannot be started in specified port range
      */
     @VisibleForTesting
@@ -75,13 +77,15 @@ public class AkkaBootstrapTools {
      * @param externalPortRange The choosing range of the external port to access the ActorSystem.
      * @param bindAddress The local address to bind to.
      * @param bindPort The local port to bind to. If not present, then the external port will be
-     *     used.
+     *         used.
      * @param logger The logger to output log information.
      * @param actorSystemExecutorConfiguration configuration for the ActorSystem's underlying
-     *     executor
+     *         executor
      * @param customConfig Custom Akka config to be combined with the config derived from Flink
-     *     configuration.
+     *         configuration.
+     *
      * @return The ActorSystem which has been started
+     *
      * @throws Exception Thrown when actor system cannot be started in specified port range
      */
     public static ActorSystem startRemoteActorSystem(
@@ -109,6 +113,7 @@ public class AkkaBootstrapTools {
             final int externalPort = portsIterator.next();
 
             try {
+                // 创建远程 ActorSystem
                 return startRemoteActorSystem(
                         configuration,
                         actorSystemName,
@@ -145,10 +150,12 @@ public class AkkaBootstrapTools {
      * @param bindPort The local port to bind to.
      * @param logger the logger to output log information.
      * @param actorSystemExecutorConfiguration configuration for the ActorSystem's underlying
-     *     executor
+     *         executor
      * @param customConfig Custom Akka config to be combined with the config derived from Flink
-     *     configuration.
+     *         configuration.
+     *
      * @return The ActorSystem which has been started.
+     *
      * @throws Exception
      */
     private static ActorSystem startRemoteActorSystem(
@@ -167,12 +174,14 @@ public class AkkaBootstrapTools {
                 NetUtils.unresolvedHostAndPortToNormalizedString(externalAddress, externalPort);
         String bindHostPortUrl =
                 NetUtils.unresolvedHostAndPortToNormalizedString(bindAddress, bindPort);
+        // Trying to start actor system, external address node2:0, bind address 0.0.0.0:0.
         logger.info(
                 "Trying to start actor system, external address {}, bind address {}.",
                 externalHostPortUrl,
                 bindHostPortUrl);
 
         try {
+            // akka config
             Config akkaConfig =
                     AkkaUtils.getAkkaConfig(
                             configuration,
@@ -184,6 +193,7 @@ public class AkkaBootstrapTools {
                 akkaConfig = customConfig.withFallback(akkaConfig);
             }
 
+            // 启动 ActorSystem
             return startActorSystem(akkaConfig, actorSystemName, logger);
         } catch (Throwable t) {
             if (t instanceof ChannelException) {
@@ -208,10 +218,12 @@ public class AkkaBootstrapTools {
      * @param actorSystemName Name of the started ActorSystem.
      * @param logger The logger to output log information.
      * @param actorSystemExecutorConfiguration Configuration for the ActorSystem's underlying
-     *     executor.
+     *         executor.
      * @param customConfig Custom Akka config to be combined with the config derived from Flink
-     *     configuration.
+     *         configuration.
+     *
      * @return The ActorSystem which has been started.
+     *
      * @throws Exception
      */
     public static ActorSystem startLocalActorSystem(
@@ -245,13 +257,15 @@ public class AkkaBootstrapTools {
      * @param akkaConfig Config of the started ActorSystem.
      * @param actorSystemName Name of the started ActorSystem.
      * @param logger The logger to output log information.
+     *
      * @return The ActorSystem which has been started.
      */
     private static ActorSystem startActorSystem(
             Config akkaConfig, String actorSystemName, Logger logger) {
         logger.debug("Using akka configuration\n {}", akkaConfig);
+        // 启动 ActorSystem
         ActorSystem actorSystem = AkkaUtils.createActorSystem(actorSystemName, akkaConfig);
-
+        //  Actor system started at akka.tcp://flink@node2:45089
         logger.info("Actor system started at {}", AkkaUtils.getAddress(actorSystem));
         return actorSystem;
     }
@@ -259,7 +273,8 @@ public class AkkaBootstrapTools {
     // ------------------------------------------------------------------------
 
     /** Private constructor to prevent instantiation. */
-    private AkkaBootstrapTools() {}
+    private AkkaBootstrapTools() {
+    }
 
     /** Configuration interface for {@link ActorSystem} underlying executor. */
     public interface ActorSystemExecutorConfiguration {

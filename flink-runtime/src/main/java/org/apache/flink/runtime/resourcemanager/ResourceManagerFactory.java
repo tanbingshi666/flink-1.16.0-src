@@ -64,15 +64,19 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
             Executor ioExecutor)
             throws ConfigurationException {
 
+        // 根据配置解析有效资源参数 (TM 内存)
+        // 考虑到 TM 老版本内存兼容性问题 但是一般情况下不配置老版本 故返回 原始 Configuration
         final Configuration runtimeServicesAndRmConfig =
                 getEffectiveConfigurationForResourceManagerAndRuntimeServices(configuration);
 
+        // 创建 ResourceManagerRuntimeServicesConfiguration
+        // 主要解析 SlotManager 配置 比如 CPU 内存相关的计算
         final ResourceManagerRuntimeServicesConfiguration runtimeServiceConfig =
                 createResourceManagerRuntimeServicesConfiguration(runtimeServicesAndRmConfig);
-
         final Configuration rmConfig =
                 getEffectiveConfigurationForResourceManager(runtimeServicesAndRmConfig);
 
+        // 创建 ResourceManagerProcessContext
         return new ResourceManagerProcessContext(
                 rmConfig,
                 resourceId,
@@ -92,6 +96,7 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
     public ResourceManager<T> createResourceManager(
             ResourceManagerProcessContext context, UUID leaderSessionId) throws Exception {
 
+        // 创建 ResourceManager 运行时服务 比如 SlotManager
         final ResourceManagerRuntimeServices resourceManagerRuntimeServices =
                 createResourceManagerRuntimeServices(
                         context.getRmRuntimeServicesConfig(),
@@ -100,6 +105,8 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
                         SlotManagerMetricGroup.create(
                                 context.getMetricRegistry(), context.getHostname()));
 
+        // 创建 ResourceManager 调用 ActiveResourceManagerFactory.createResourceManager()
+        // 返回 ActiveResourceManager
         return createResourceManager(
                 context.getRmConfig(),
                 context.getResourceId(),
@@ -161,6 +168,7 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
             HighAvailabilityServices highAvailabilityServices,
             SlotManagerMetricGroup slotManagerMetricGroup) {
 
+        // 创建 ResourceManagerRuntimeServices
         return ResourceManagerRuntimeServices.fromConfiguration(
                 rmRuntimeServicesConfig,
                 highAvailabilityServices,
@@ -169,6 +177,6 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
     }
 
     protected abstract ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
-                    throws ConfigurationException;
+    createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            throws ConfigurationException;
 }

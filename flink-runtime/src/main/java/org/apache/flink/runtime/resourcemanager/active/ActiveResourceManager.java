@@ -129,6 +129,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
             Duration workerRegistrationTimeout,
             Duration previousWorkerRecoverTimeout,
             Executor ioExecutor) {
+        // 创建 ActiveResourceManager
         super(
                 rpcService,
                 leaderSessionId,
@@ -168,6 +169,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
     @Override
     protected void initialize() throws ResourceManagerException {
         try {
+            // 初始化 ResourceManager 连接 Yarn RM
             resourceManagerDriver.initialize(
                     this,
                     new GatewayMainThreadExecutor(),
@@ -376,8 +378,9 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
      * Clear states for a terminated worker.
      *
      * @param resourceId Identifier of the worker
+     *
      * @return True if the worker is known and states are cleared; false if the worker is unknown
-     *     (duplicate call to already cleared worker)
+     *         (duplicate call to already cleared worker)
      */
     private boolean clearStateForWorker(ResourceID resourceId) {
         WorkerType worker = workerNodeMap.remove(resourceId);

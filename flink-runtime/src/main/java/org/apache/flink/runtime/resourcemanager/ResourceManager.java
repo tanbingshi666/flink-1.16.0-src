@@ -179,6 +179,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             Time rpcTimeout,
             Executor ioExecutor) {
 
+        // Actor 配置
         super(
                 rpcService,
                 RpcServiceUtils.createRandomName(RESOURCE_MANAGER_NAME),
@@ -238,7 +239,10 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     public final void onStart() throws Exception {
         try {
             log.info("Starting the resource manager.");
+
+            // 启动 ResourceManager 服务
             startResourceManagerServices();
+
             startedFuture.complete(null);
         } catch (Throwable t) {
             final ResourceManagerException exception =
@@ -252,12 +256,15 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
     private void startResourceManagerServices() throws Exception {
         try {
+            // 启动 DefaultJobLeaderIdService 服务
             jobLeaderIdService.start(new JobLeaderIdActionsImpl());
 
             registerMetrics();
 
+            // 启动两个心跳服务线程 分别给 JM TM 发送心跳
             startHeartbeatServices();
 
+            // 启动 SlotManager DeclarativeSlotManager
             slotManager.start(
                     getFencingToken(),
                     getMainThreadExecutor(),
@@ -266,6 +273,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
             delegationTokenManager.start();
 
+            // 初始化 ResourceManager 核心是连接 Yarn RM
             initialize();
         } catch (Exception e) {
             handleStartResourceManagerServicesException(e);
@@ -415,7 +423,8 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                                         String.format(
                                                 "The leading JobMaster id %s did not match the received JobMaster id %s. "
                                                         + "This indicates that a JobMaster leader change has happened.",
-                                                leadingJobMasterId, jobMasterId);
+                                                leadingJobMasterId,
+                                                jobMasterId);
                                 log.debug(declineMessage);
                                 return new RegistrationResponse.Failure(
                                         new FlinkException(declineMessage));
@@ -722,7 +731,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
     @Override
     public CompletableFuture<Collection<Tuple2<ResourceID, String>>>
-            requestTaskManagerMetricQueryServiceAddresses(Time timeout) {
+    requestTaskManagerMetricQueryServiceAddresses(Time timeout) {
         final ArrayList<CompletableFuture<Optional<Tuple2<ResourceID, String>>>>
                 metricQueryServiceAddressFutures = new ArrayList<>(taskExecutors.size());
 
@@ -736,16 +745,16 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
             final CompletableFuture<Optional<Tuple2<ResourceID, String>>>
                     metricQueryServiceAddressFuture =
-                            taskExecutorGateway
-                                    .requestMetricQueryServiceAddress(timeout)
-                                    .thenApply(
-                                            o ->
-                                                    o.toOptional()
-                                                            .map(
-                                                                    address ->
-                                                                            Tuple2.of(
-                                                                                    tmResourceId,
-                                                                                    address)));
+                    taskExecutorGateway
+                            .requestMetricQueryServiceAddress(timeout)
+                            .thenApply(
+                                    o ->
+                                            o.toOptional()
+                                                    .map(
+                                                            address ->
+                                                                    Tuple2.of(
+                                                                            tmResourceId,
+                                                                            address)));
 
             metricQueryServiceAddressFutures.add(metricQueryServiceAddressFuture);
         }
@@ -898,6 +907,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * @param jobId of the job for which the JobMaster is responsible
      * @param jobManagerAddress address of the JobMaster
      * @param jobManagerResourceId ResourceID of the JobMaster
+     *
      * @return RegistrationResponse
      */
     private RegistrationResponse registerJobMasterInternal(
@@ -954,6 +964,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * Registers a new TaskExecutor.
      *
      * @param taskExecutorRegistration task executor registration parameters
+     *
      * @return RegistrationResponse
      */
     private RegistrationResponse registerTaskExecutorInternal(
@@ -1040,7 +1051,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      *
      * @param jobId identifying the job whose leader shall be disconnected.
      * @param resourceRequirementHandling indicating how existing resource requirements for the
-     *     corresponding job should be handled
+     *         corresponding job should be handled
      * @param cause The exception which cause the JobManager failed.
      */
     protected void closeJobManagerConnection(
@@ -1081,6 +1092,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      *
      * @param resourceID Id of the TaskManager that has failed.
      * @param cause The exception which cause the TaskManager failed.
+     *
      * @return The {@link WorkerType} of the closed connection, or empty if already removed.
      */
     protected Optional<WorkerType> closeTaskManagerConnection(
@@ -1200,6 +1212,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     }
 
     private void startHeartbeatServices() {
+        // 创建 HeartbeatManagerSenderImpl 线程
         taskManagerHeartbeatManager =
                 heartbeatServices.createHeartbeatManagerSender(
                         resourceId,
@@ -1207,6 +1220,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         getMainThreadExecutor(),
                         log);
 
+        // 创建 HeartbeatManagerSenderImpl 线程
         jobManagerHeartbeatManager =
                 heartbeatServices.createHeartbeatManagerSender(
                         resourceId,
@@ -1228,7 +1242,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * Initializes the framework specific components.
      *
      * @throws ResourceManagerException which occurs during initialization and causes the resource
-     *     manager to fail.
+     *         manager to fail.
      */
     protected abstract void initialize() throws ResourceManagerException;
 
@@ -1248,6 +1262,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      *
      * @param finalStatus The application status to report.
      * @param optionalDiagnostics A diagnostics message or {@code null}.
+     *
      * @throws ResourceManagerException if the application could not be shut down.
      */
     protected abstract void internalDeregisterApplication(
@@ -1258,7 +1273,8 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * Allocates a resource using the worker resource specification.
      *
      * @param workerResourceSpec workerResourceSpec specifies the size of the to be allocated
-     *     resource
+     *         resource
+     *
      * @return whether the resource can be allocated
      */
     @VisibleForTesting
@@ -1275,6 +1291,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * Stops the given worker.
      *
      * @param worker The worker.
+     *
      * @return True if the worker was stopped, otherwise false
      */
     public abstract boolean stopWorker(WorkerType worker);
@@ -1283,7 +1300,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * Get the ready to serve future of the resource manager.
      *
      * @return The ready to serve future of the resource manager, which indicated whether it is
-     *     ready to serve.
+     *         ready to serve.
      */
     protected abstract CompletableFuture<Void> getReadyToServeFuture();
 
@@ -1511,7 +1528,8 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
     private class ResourceManagerBlocklistContext implements BlocklistContext {
         @Override
-        public void blockResources(Collection<BlockedNode> blockedNodes) {}
+        public void blockResources(Collection<BlockedNode> blockedNodes) {
+        }
 
         @Override
         public void unblockResources(Collection<BlockedNode> unBlockedNodes) {

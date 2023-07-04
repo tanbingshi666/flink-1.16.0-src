@@ -154,7 +154,8 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     private final Executor ioExecutor;
 
-    @Nullable private final String metricServiceQueryAddress;
+    @Nullable
+    private final String metricServiceQueryAddress;
 
     private final Map<JobID, CompletableFuture<Void>> jobManagerRunnerTerminationFutures;
 
@@ -181,6 +182,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
             DispatcherBootstrapFactory dispatcherBootstrapFactory,
             DispatcherServices dispatcherServices)
             throws Exception {
+        // 创建 StandaloneDispatcher
         this(
                 rpcService,
                 fencingToken,
@@ -200,6 +202,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
             DispatcherServices dispatcherServices,
             JobManagerRunnerRegistry jobManagerRunnerRegistry)
             throws Exception {
+        // 创建 Dispatcher
         this(
                 rpcService,
                 fencingToken,
@@ -222,6 +225,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
             JobManagerRunnerRegistry jobManagerRunnerRegistry,
             ResourceCleanerFactory resourceCleanerFactory)
             throws Exception {
+        // Dispatcher 是一个 RPC Actor
         super(rpcService, RpcServiceUtils.createRandomName(DISPATCHER_NAME), fencingToken);
         assertRecoveredJobsAndDirtyJobResults(recoveredJobs, recoveredDirtyJobs);
 
@@ -244,7 +248,8 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
         this.jobManagerRunnerRegistry =
                 new OnMainThreadJobManagerRunnerRegistry(
-                        jobManagerRunnerRegistry, this.getMainThreadExecutor());
+                        jobManagerRunnerRegistry,
+                        this.getMainThreadExecutor());
 
         this.historyServerArchivist = dispatcherServices.getHistoryServerArchivist();
 
@@ -295,6 +300,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     @Override
     public void onStart() throws Exception {
         try {
+            // 启动 Dispatcher 服务 (监控服务)
             startDispatcherServices();
         } catch (Throwable t) {
             final DispatcherException exception =
@@ -304,11 +310,15 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
             throw exception;
         }
 
+        // 恢复任务相关
         startCleanupRetries();
         startRecoveredJobs();
 
+        // 创建 ApplicationDispatcherBootstrap
+        // 里面真正启动程序任务
         this.dispatcherBootstrap =
                 this.dispatcherBootstrapFactory.create(
+                        // 获取 Dispatcher RPC Gateway (也即获取 Dispatcher 自身 RPC 客户端)
                         getSelfGateway(DispatcherGateway.class),
                         this.getRpcService().getScheduledExecutor(),
                         this::onFatalError);
@@ -447,7 +457,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 final DuplicateJobSubmissionException exception =
                         isInGloballyTerminalState(jobGraph.getJobID())
                                 ? DuplicateJobSubmissionException.ofGloballyTerminated(
-                                        jobGraph.getJobID())
+                                jobGraph.getJobID())
                                 : DuplicateJobSubmissionException.of(jobGraph.getJobID());
                 return FutureUtils.completedExceptionally(exception);
             } else if (isPartialResourceConfigured(jobGraph)) {
@@ -484,7 +494,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
      * Checks whether the given job has already been submitted or executed.
      *
      * @param jobId identifying the submitted job
+     *
      * @return true if the job has already been submitted (is running) or has been executed
+     *
      * @throws FlinkException if the job scheduling status cannot be retrieved
      */
     private boolean isDuplicateJob(JobID jobId) throws FlinkException {
@@ -495,7 +507,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
      * Checks whether the given job has already been executed.
      *
      * @param jobId identifying the submitted job
+     *
      * @return true if the job has already finished, either successfully or as a failure
+     *
      * @throws FlinkException if the job scheduling status cannot be retrieved
      */
     private boolean isInGloballyTerminalState(JobID jobId) throws FlinkException {
@@ -606,7 +620,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                     Preconditions.checkState(
                                             jobManagerRunnerRegistry.isRegistered(jobId)
                                                     && jobManagerRunnerRegistry.get(jobId)
-                                                            == jobManagerRunner,
+                                                    == jobManagerRunner,
                                             "The job entry in runningJobs must be bound to the lifetime of the JobManagerRunner.");
 
                                     if (jobManagerRunnerResult != null) {
@@ -878,7 +892,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     @Override
     public CompletableFuture<Collection<Tuple2<ResourceID, String>>>
-            requestTaskManagerMetricQueryServiceAddresses(Time timeout) {
+    requestTaskManagerMetricQueryServiceAddresses(Time timeout) {
         return runResourceManagerCommand(
                 resourceManagerGateway ->
                         resourceManagerGateway.requestTaskManagerMetricQueryServiceAddresses(

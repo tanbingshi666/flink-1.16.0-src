@@ -35,6 +35,7 @@ public class DefaultDispatcherGatewayService
     private final DispatcherGateway dispatcherGateway;
 
     private DefaultDispatcherGatewayService(Dispatcher dispatcher) {
+        // StandaloneDispatcher
         this.dispatcher = dispatcher;
         this.dispatcherGateway = dispatcher.getSelfGateway(DispatcherGateway.class);
     }
@@ -65,6 +66,7 @@ public class DefaultDispatcherGatewayService
     }
 
     public static DefaultDispatcherGatewayService from(Dispatcher dispatcher) {
+        // 创建 DefaultDispatcherGatewayService
         return new DefaultDispatcherGatewayService(dispatcher);
     }
 }

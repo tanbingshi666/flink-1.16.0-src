@@ -133,6 +133,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
             YarnNodeManagerClientFactory yarnNodeManagerClientFactory) {
         super(flinkConfig, GlobalConfiguration.loadConfiguration(configuration.getCurrentDir()));
 
+        // 加载 yarn 配置
         this.yarnConfig = Utils.getYarnAndHadoopConfiguration(flinkConfig);
         this.requestResourceFutures = new HashMap<>();
         this.configuration = configuration;
@@ -163,7 +164,9 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         this.registerApplicationMasterResponseReflector =
                 new RegisterApplicationMasterResponseReflector(log);
 
+        // DefaultYarnResourceManagerClientFactory
         this.yarnResourceManagerClientFactory = yarnResourceManagerClientFactory;
+        // DefaultYarnNodeManagerClientFactory
         this.yarnNodeManagerClientFactory = yarnNodeManagerClientFactory;
         this.trackerOfReleasedResources = new Phaser();
     }
@@ -174,14 +177,18 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
     @Override
     protected void initializeInternal() throws Exception {
+        //
         final YarnContainerEventHandler yarnContainerEventHandler = new YarnContainerEventHandler();
+
         try {
+            // 连接 Yarn RM
             resourceManagerClient =
                     yarnResourceManagerClientFactory.createResourceManagerClient(
                             yarnHeartbeatIntervalMillis, yarnContainerEventHandler);
             resourceManagerClient.init(yarnConfig);
             resourceManagerClient.start();
 
+            // 向 Yarn RM 注册 AM
             final RegisterApplicationMasterResponse registerApplicationMasterResponse =
                     registerApplicationMaster();
             getContainersFromPreviousAttempts(registerApplicationMasterResponse);
@@ -195,6 +202,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
             throw new ResourceManagerException("Could not start resource manager client.", e);
         }
 
+        // 连接 Yarn NM
         nodeManagerClient =
                 yarnNodeManagerClientFactory.createNodeManagerClient(yarnContainerEventHandler);
         nodeManagerClient.init(yarnConfig);
@@ -263,8 +271,8 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
         final Optional<TaskExecutorProcessSpecContainerResourcePriorityAdapter.PriorityAndResource>
                 priorityAndResourceOpt =
-                        taskExecutorProcessSpecContainerResourcePriorityAdapter
-                                .getPriorityAndResource(taskExecutorProcessSpec);
+                taskExecutorProcessSpecContainerResourcePriorityAdapter
+                        .getPriorityAndResource(taskExecutorProcessSpec);
 
         if (!priorityAndResourceOpt.isPresent()) {
             requestResourceFuture.completeExceptionally(
@@ -327,11 +335,11 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
     private void onContainersOfPriorityAllocated(Priority priority, List<Container> containers) {
         final Optional<
-                        TaskExecutorProcessSpecContainerResourcePriorityAdapter
-                                .TaskExecutorProcessSpecAndResource>
+                TaskExecutorProcessSpecContainerResourcePriorityAdapter
+                        .TaskExecutorProcessSpecAndResource>
                 taskExecutorProcessSpecAndResourceOpt =
-                        taskExecutorProcessSpecContainerResourcePriorityAdapter
-                                .getTaskExecutorProcessSpecAndResource(priority);
+                taskExecutorProcessSpecContainerResourcePriorityAdapter
+                        .getTaskExecutorProcessSpecAndResource(priority);
 
         Preconditions.checkState(
                 taskExecutorProcessSpecAndResourceOpt.isPresent(),
@@ -355,7 +363,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         final Iterator<Container> containerIterator = containers.iterator();
         final Iterator<AMRMClient.ContainerRequest> pendingContainerRequestIterator =
                 getPendingRequestsAndCheckConsistency(
-                                priority, resource, pendingRequestResourceFutures.size())
+                        priority, resource, pendingRequestResourceFutures.size())
                         .iterator();
 
         int numAccepted = 0;
@@ -558,6 +566,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
      * Converts a Flink application status enum to a YARN application status enum.
      *
      * @param status The Flink application status.
+     *
      * @return The corresponding YARN application status.
      */
     private FinalApplicationStatus getYarnStatus(ApplicationStatus status) {

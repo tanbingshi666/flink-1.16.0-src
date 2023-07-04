@@ -48,9 +48,18 @@ public enum JobRestEndpointFactory implements RestEndpointFactory<RestfulGateway
             LeaderElectionService leaderElectionService,
             FatalErrorHandler fatalErrorHandler)
             throws Exception {
+        // 根据配置参数 封装 RestEndpoint 相关参数 RestHandlerConfiguration
+        /**
+         * 1 刷新间隔 默认 3s
+         * 2 最大缓存 checkpoint 数据 默认 10
+         * 3 web 超时时间 默认 10min
+         * 4 是否开启基于 web-ui 提交任务 默认 true
+         * 5 是否开启基于 web-ui 取消任务 默认 true
+         */
         final RestHandlerConfiguration restHandlerConfiguration =
                 RestHandlerConfiguration.fromConfiguration(configuration);
 
+        // 创建 MiniDispatcherRestEndpoint
         return new MiniDispatcherRestEndpoint(
                 dispatcherGatewayRetriever,
                 configuration,

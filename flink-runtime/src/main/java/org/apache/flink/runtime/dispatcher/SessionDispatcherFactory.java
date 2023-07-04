@@ -40,15 +40,19 @@ public enum SessionDispatcherFactory implements DispatcherFactory {
                     partialDispatcherServicesWithJobPersistenceComponents)
             throws Exception {
         // create the default dispatcher
+        // 创建 StandaloneDispatcher
         return new StandaloneDispatcher(
                 rpcService,
                 fencingToken,
                 recoveredJobs,
                 recoveredDirtyJobResults,
                 dispatcherBootstrapFactory,
+                // 创建 DispatcherServices
                 DispatcherServices.from(
                         partialDispatcherServicesWithJobPersistenceComponents,
+                        // 创建 JobMaster 服务工厂 JobMasterServiceLeadershipRunnerFactory
                         JobMasterServiceLeadershipRunnerFactory.INSTANCE,
+                        // 创建 checkpoint 资源请求工厂 CheckpointResourcesCleanupRunnerFactory
                         CheckpointResourcesCleanupRunnerFactory.INSTANCE));
     }
 }

@@ -55,8 +55,11 @@ public class HeartbeatServices {
                 failedRpcRequestsUntilUnreachable > 0 || failedRpcRequestsUntilUnreachable == -1,
                 "The number of failed heartbeat RPC requests has to be larger than 0 or -1 (deactivated).");
 
+        // 默认 10s
         this.heartbeatInterval = heartbeatInterval;
+        // 默认 50s
         this.heartbeatTimeout = heartbeatTimeout;
+        // 默认 2
         this.failedRpcRequestsUntilUnreachable = failedRpcRequestsUntilUnreachable;
     }
 
@@ -65,11 +68,12 @@ public class HeartbeatServices {
      *
      * @param resourceId Resource Id which identifies the owner of the heartbeat manager
      * @param heartbeatListener Listener which will be notified upon heartbeat timeouts for
-     *     registered targets
+     *         registered targets
      * @param mainThreadExecutor Scheduled executor to be used for scheduling heartbeat timeouts
      * @param log Logger to be used for the logging
      * @param <I> Type of the incoming payload
      * @param <O> Type of the outgoing payload
+     *
      * @return A new HeartbeatManager instance
      */
     public <I, O> HeartbeatManager<I, O> createHeartbeatManager(
@@ -92,12 +96,13 @@ public class HeartbeatServices {
      *
      * @param resourceId Resource Id which identifies the owner of the heartbeat manager
      * @param heartbeatListener Listener which will be notified upon heartbeat timeouts for
-     *     registered targets
+     *         registered targets
      * @param mainThreadExecutor Scheduled executor to be used for scheduling heartbeat timeouts and
-     *     periodically send heartbeat requests
+     *         periodically send heartbeat requests
      * @param log Logger to be used for the logging
      * @param <I> Type of the incoming payload
      * @param <O> Type of the outgoing payload
+     *
      * @return A new HeartbeatManager instance which actively sends heartbeats
      */
     public <I, O> HeartbeatManager<I, O> createHeartbeatManagerSender(
@@ -105,7 +110,7 @@ public class HeartbeatServices {
             HeartbeatListener<I, O> heartbeatListener,
             ScheduledExecutor mainThreadExecutor,
             Logger log) {
-
+        // 创建 HeartbeatManagerSenderImpl
         return new HeartbeatManagerSenderImpl<>(
                 heartbeatInterval,
                 heartbeatTimeout,
@@ -120,16 +125,19 @@ public class HeartbeatServices {
      * Creates an HeartbeatServices instance from a {@link Configuration}.
      *
      * @param configuration Configuration to be used for the HeartbeatServices creation
+     *
      * @return An HeartbeatServices instance created from the given configuration
      */
     public static HeartbeatServices fromConfiguration(Configuration configuration) {
+        // 心跳间隔 默认 10s
         long heartbeatInterval = configuration.getLong(HeartbeatManagerOptions.HEARTBEAT_INTERVAL);
-
+        // 心跳超时 默认 50s
         long heartbeatTimeout = configuration.getLong(HeartbeatManagerOptions.HEARTBEAT_TIMEOUT);
-
+        // 心跳失败阈值 2
         int failedRpcRequestsUntilUnreachable =
                 configuration.get(HeartbeatManagerOptions.HEARTBEAT_RPC_FAILURE_THRESHOLD);
 
+        // 创建心跳服务 HeartbeatServices
         return new HeartbeatServices(
                 heartbeatInterval, heartbeatTimeout, failedRpcRequestsUntilUnreachable);
     }

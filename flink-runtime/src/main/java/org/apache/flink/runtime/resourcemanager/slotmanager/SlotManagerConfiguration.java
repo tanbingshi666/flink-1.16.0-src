@@ -137,17 +137,19 @@ public class SlotManagerConfiguration {
             Configuration configuration, WorkerResourceSpec defaultWorkerResourceSpec)
             throws ConfigurationException {
 
+        // akka ask 超时时间 10s
         final Time rpcTimeout =
                 Time.fromDuration(configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION));
 
+        // 申请 slot 请求超时时间 默认 5min
         final Time slotRequestTimeout = getSlotRequestTimeout(configuration);
+        // TM 超时时间 默认 30s
         final Time taskManagerTimeout =
                 Time.milliseconds(
                         configuration.getLong(ResourceManagerOptions.TASK_MANAGER_TIMEOUT));
 
         final Duration requirementCheckDelay =
                 configuration.get(ResourceManagerOptions.REQUIREMENTS_CHECK_DELAY);
-
         boolean waitResultConsumedBeforeRelease =
                 configuration.getBoolean(
                         ResourceManagerOptions.TASK_MANAGER_RELEASE_WHEN_RESULT_CONSUMED);
@@ -159,13 +161,13 @@ public class SlotManagerConfiguration {
                         ? LeastUtilizationSlotMatchingStrategy.INSTANCE
                         : AnyMatchingSlotMatchingStrategy.INSTANCE;
 
+        // TM Slot 个数
         int numSlotsPerWorker = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
-
         int maxSlotNum = configuration.getInteger(ResourceManagerOptions.MAX_SLOT_NUM);
-
         int redundantTaskManagerNum =
                 configuration.getInteger(ResourceManagerOptions.REDUNDANT_TASK_MANAGER_NUM);
 
+        // 创建 SlotManagerConfiguration
         return new SlotManagerConfiguration(
                 rpcTimeout,
                 slotRequestTimeout,
@@ -208,9 +210,9 @@ public class SlotManagerConfiguration {
                                 maxSlotNum == Integer.MAX_VALUE
                                         ? new CPUResource(Double.MAX_VALUE)
                                         : defaultWorkerResourceSpec
-                                                .getCpuCores()
-                                                .divide(defaultWorkerResourceSpec.getNumSlots())
-                                                .multiply(maxSlotNum));
+                                        .getCpuCores()
+                                        .divide(defaultWorkerResourceSpec.getNumSlots())
+                                        .multiply(maxSlotNum));
     }
 
     private static MemorySize getMaxTotalMem(
@@ -224,8 +226,8 @@ public class SlotManagerConfiguration {
                                 maxSlotNum == Integer.MAX_VALUE
                                         ? MemorySize.MAX_VALUE
                                         : defaultWorkerResourceSpec
-                                                .getTotalMemSize()
-                                                .divide(defaultWorkerResourceSpec.getNumSlots())
-                                                .multiply(maxSlotNum));
+                                        .getTotalMemSize()
+                                        .divide(defaultWorkerResourceSpec.getNumSlots())
+                                        .multiply(maxSlotNum));
     }
 }

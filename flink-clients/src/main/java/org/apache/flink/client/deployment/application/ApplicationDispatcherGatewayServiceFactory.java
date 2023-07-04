@@ -89,11 +89,14 @@ public class ApplicationDispatcherGatewayServiceFactory
             JobGraphWriter jobGraphWriter,
             JobResultStore jobResultStore) {
 
+        // 恢复之前的 Job 一般情况下为空
         final List<JobID> recoveredJobIds = getRecoveredJobIds(recoveredJobs);
 
         final Dispatcher dispatcher;
         try {
+            // 创建 Dispatcher StandaloneDispatcher
             dispatcher =
+                    // 调用 SessionDispatcherFactory.createDispatcher()
                     dispatcherFactory.createDispatcher(
                             rpcService,
                             fencingToken,
@@ -113,8 +116,10 @@ public class ApplicationDispatcherGatewayServiceFactory
             throw new FlinkRuntimeException("Could not create the Dispatcher rpc endpoint.", e);
         }
 
+        // 启动 Dispatcher 调用 StandaloneDispatcher 父类 Dispatcher.onStart()
         dispatcher.start();
 
+        // 封装 Dispatcher 服务为 DefaultDispatcherGatewayService
         return DefaultDispatcherGatewayService.from(dispatcher);
     }
 

@@ -50,7 +50,9 @@ public abstract class AbstractNonHaServices implements HighAvailabilityServices 
     private boolean shutdown;
 
     public AbstractNonHaServices() {
+        // 创建 EmbeddedJobResultStore
         this.jobResultStore = new EmbeddedJobResultStore();
+        // 创建 VoidBlobStore
         this.voidBlobStore = new VoidBlobStore();
 
         shutdown = false;

@@ -65,6 +65,7 @@ public class ApplicationDispatcherLeaderProcessFactoryFactory
             PartialDispatcherServices partialDispatcherServices,
             FatalErrorHandler fatalErrorHandler) {
 
+        // 创建 ApplicationDispatcherGatewayServiceFactory
         final ApplicationDispatcherGatewayServiceFactory dispatcherServiceFactory =
                 new ApplicationDispatcherGatewayServiceFactory(
                         configuration,
@@ -73,6 +74,7 @@ public class ApplicationDispatcherLeaderProcessFactoryFactory
                         rpcService,
                         partialDispatcherServices);
 
+        // 创建 SessionDispatcherLeaderProcessFactory
         return new SessionDispatcherLeaderProcessFactory(
                 dispatcherServiceFactory,
                 jobPersistenceComponentFactory,

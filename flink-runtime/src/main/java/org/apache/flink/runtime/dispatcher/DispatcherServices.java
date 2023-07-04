@@ -56,7 +56,8 @@ public class DispatcherServices {
 
     private final HistoryServerArchivist historyServerArchivist;
 
-    @Nullable private final String metricQueryServiceAddress;
+    @Nullable
+    private final String metricQueryServiceAddress;
 
     private final DispatcherOperationCaches operationCaches;
 
@@ -106,8 +107,10 @@ public class DispatcherServices {
                 Preconditions.checkNotNull(jobManagerMetricGroup, "JobManagerMetricGroup");
         this.jobGraphWriter = Preconditions.checkNotNull(jobGraphWriter, "JobGraphWriter");
         this.jobResultStore = Preconditions.checkNotNull(jobResultStore, "JobResultStore");
+        // JobMasterServiceLeadershipRunnerFactory
         this.jobManagerRunnerFactory =
                 Preconditions.checkNotNull(jobManagerRunnerFactory, "JobManagerRunnerFactory");
+        // CheckpointResourcesCleanupRunnerFactory
         this.cleanupRunnerFactory =
                 Preconditions.checkNotNull(cleanupRunnerFactory, "CleanupRunnerFactory");
         this.ioExecutor = Preconditions.checkNotNull(ioExecutor, "IOExecutor");
@@ -183,6 +186,7 @@ public class DispatcherServices {
                     partialDispatcherServicesWithJobPersistenceComponents,
             JobManagerRunnerFactory jobManagerRunnerFactory,
             CleanupRunnerFactory cleanupRunnerFactory) {
+        // 创建 DispatcherServices
         return new DispatcherServices(
                 partialDispatcherServicesWithJobPersistenceComponents.getConfiguration(),
                 partialDispatcherServicesWithJobPersistenceComponents.getHighAvailabilityServices(),

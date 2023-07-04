@@ -82,7 +82,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
 
-    @VisibleForTesting static final String FAILED_JOB_NAME = "(application driver)";
+    @VisibleForTesting
+    static final String FAILED_JOB_NAME = "(application driver)";
 
     private static final Logger LOG = LoggerFactory.getLogger(ApplicationDispatcherBootstrap.class);
 
@@ -117,9 +118,11 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
         this.application = checkNotNull(application);
         this.errorHandler = checkNotNull(errorHandler);
 
+        // 异步运行 Application 程序任务
         this.applicationCompletionFuture =
                 fixJobIdAndRunApplicationAsync(dispatcherGateway, scheduledExecutor);
 
+        // 程序任务执行完成之后
         this.bootstrapCompletionFuture = finishBootstrapTasks(dispatcherGateway);
     }
 
@@ -208,6 +211,7 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
             final DispatcherGateway dispatcherGateway, final ScheduledExecutor scheduledExecutor) {
         final Optional<String> configuredJobId =
                 configuration.getOptional(PipelineOptionsInternal.PIPELINE_FIXED_JOB_ID);
+        // 默认 false
         final boolean submitFailedJobOnApplicationError =
                 configuration.getBoolean(DeploymentOptions.SUBMIT_FAILED_JOB_ON_APPLICATION_ERROR);
         if (!HighAvailabilityMode.isHighAvailabilityModeActivated(configuration)
@@ -222,15 +226,20 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
             configuration.set(
                     PipelineOptionsInternal.PIPELINE_FIXED_JOB_ID,
                     new JobID(
-                                    Preconditions.checkNotNull(
-                                                    configuration.get(
-                                                            HighAvailabilityOptions.HA_CLUSTER_ID))
-                                            .hashCode(),
-                                    0)
+                            Preconditions.checkNotNull(
+                                            configuration.get(
+                                                    HighAvailabilityOptions.HA_CLUSTER_ID))
+                                    .hashCode(),
+                            0)
                             .toHexString());
         }
+
+        // 异步运行 Application
         return runApplicationAsync(
-                dispatcherGateway, scheduledExecutor, true, submitFailedJobOnApplicationError);
+                dispatcherGateway,
+                scheduledExecutor,
+                true,
+                submitFailedJobOnApplicationError);
     }
 
     /**
@@ -251,6 +260,7 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
         applicationExecutionTask =
                 scheduledExecutor.schedule(
                         () ->
+                                // 异步运行 Application
                                 runApplicationEntryPoint(
                                         applicationExecutionFuture,
                                         tolerateMissingResult,
@@ -261,6 +271,7 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
                         0L,
                         TimeUnit.MILLISECONDS);
 
+        // 获取 Application 结果
         return applicationExecutionFuture.thenCompose(
                 jobIds ->
                         getApplicationResult(
@@ -298,6 +309,7 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
                     new EmbeddedExecutorServiceLoader(
                             applicationJobIds, dispatcherGateway, scheduledExecutor);
 
+            // 执行程序
             ClientUtils.executeProgram(
                     executorServiceLoader,
                     configuration,

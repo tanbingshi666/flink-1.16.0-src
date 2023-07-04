@@ -52,17 +52,19 @@ public class YarnEntrypointUtils {
 
     public static Configuration loadConfiguration(
             String workingDirectory, Configuration dynamicParameters, Map<String, String> env) {
+        // 加载 flink-conf.yaml 文件内容 + 入口参数
         final Configuration configuration =
                 GlobalConfiguration.loadConfiguration(workingDirectory, dynamicParameters);
 
         final String keytabPrincipal = env.get(YarnConfigKeys.KEYTAB_PRINCIPAL);
 
+        // 获取当前 AM 在哪一台 NodeManager 主机
         final String hostname = env.get(ApplicationConstants.Environment.NM_HOST.key());
         Preconditions.checkState(
                 hostname != null,
                 "ApplicationMaster hostname variable %s not set",
                 ApplicationConstants.Environment.NM_HOST.key());
-
+        // 设置 JM 启动地址
         configuration.setString(JobManagerOptions.ADDRESS, hostname);
         configuration.setString(RestOptions.ADDRESS, hostname);
         configuration.setString(RestOptions.BIND_ADDRESS, hostname);
@@ -116,6 +118,7 @@ public class YarnEntrypointUtils {
 
         UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
 
+        // ARN daemon is running as: hdfs Yarn client user obtainer: hdfs
         log.info(
                 "YARN daemon is running as: {} Yarn client user obtainer: {}",
                 currentUser.getShortUserName(),

@@ -77,7 +77,9 @@ public class BlobUtils {
      * Creates a BlobStore based on the parameters set in the configuration.
      *
      * @param config configuration to use
+     *
      * @return a (distributed) blob store for high availability
+     *
      * @throws IOException thrown if the (distributed) file storage cannot be created
      */
     public static BlobStoreService createBlobStoreFromConfig(Configuration config)
@@ -114,9 +116,11 @@ public class BlobUtils {
      *
      * @param configuration for the BlobServer
      * @param fallbackStorageDirectory fallback storage directory that is used if no other directory
-     *     has been explicitly configured
+     *         has been explicitly configured
      * @param blobStore blob store to use for this blob server
+     *
      * @return new blob server instance
+     *
      * @throws IOException if we could not create the blob storage directory
      */
     public static BlobServer createBlobServer(
@@ -124,8 +128,10 @@ public class BlobUtils {
             Reference<File> fallbackStorageDirectory,
             BlobStore blobStore)
             throws IOException {
+        // BlobServer 临时目录
         final Reference<File> storageDirectory =
                 createBlobStorageDirectory(configuration, fallbackStorageDirectory);
+        // 创建 BlobServer
         return new BlobServer(configuration, storageDirectory, blobStore);
     }
 
@@ -137,7 +143,9 @@ public class BlobUtils {
      * @param fallbackStorageDirectory fallback storage directory
      * @param blobView blob view
      * @param serverAddress blob server address
+     *
      * @return new blob cache service instance
+     *
      * @throws IOException if we could not create the blob storage directory
      */
     public static BlobCacheService createBlobCacheService(
@@ -200,7 +208,9 @@ public class BlobUtils {
      * created if it does not exist yet.
      *
      * @param storageDir storage directory used be the BLOB service
+     *
      * @return the BLOB service's directory for incoming files
+     *
      * @throws IOException if creating the directory fails
      */
     static File getIncomingDirectory(File storageDir) throws IOException {
@@ -217,7 +227,9 @@ public class BlobUtils {
      * @param storageDir storage directory used be the BLOB service
      * @param key the key identifying the BLOB
      * @param jobId ID of the job for the incoming files (or <tt>null</tt> if job-unrelated)
+     *
      * @return the (designated) physical storage location of the BLOB
+     *
      * @throws IOException if creating the directory fails
      */
     static File getStorageLocation(File storageDir, @Nullable JobID jobId, BlobKey key)
@@ -235,6 +247,7 @@ public class BlobUtils {
      *
      * @param storageDir storage directory used be the BLOB service
      * @param jobId the ID of the job to return the storage directory for
+     *
      * @return the storage directory for BLOBs belonging to the job with the given ID
      */
     static String getStorageLocationPath(String storageDir, @Nullable JobID jobId) {
@@ -257,6 +270,7 @@ public class BlobUtils {
      * @param storageDir storage directory used be the BLOB service
      * @param key the key identifying the BLOB
      * @param jobId ID of the job for the incoming files
+     *
      * @return the path to the given BLOB
      */
     static String getStorageLocationPath(String storageDir, @Nullable JobID jobId, BlobKey key) {
@@ -291,6 +305,7 @@ public class BlobUtils {
      *
      * @param length the length of the upcoming data chunk in bytes
      * @param outputStream the output stream to write the length to
+     *
      * @throws IOException thrown if an I/O error occurs while writing to the output stream
      */
     static void writeLength(int length, OutputStream outputStream) throws IOException {
@@ -306,7 +321,9 @@ public class BlobUtils {
      * Auxiliary method to read the length of an upcoming data chunk from an input stream.
      *
      * @param inputStream the input stream to read the length from
+     *
      * @return the length of the upcoming data chunk in bytes
+     *
      * @throws IOException thrown if an I/O error occurs while reading from the input stream
      */
     static int readLength(InputStream inputStream) throws IOException {
@@ -332,7 +349,9 @@ public class BlobUtils {
      * Reads exception from given {@link InputStream}.
      *
      * @param in the input stream to read from
+     *
      * @return exception that was read
+     *
      * @throws IOException thrown if an I/O error occurs while reading from the input stream
      */
     static Throwable readExceptionFromStream(InputStream in) throws IOException {
@@ -359,8 +378,9 @@ public class BlobUtils {
      * @param off The offset inside the buffer.
      * @param len The number of bytes to read from the stream.
      * @param type The name of the type, to throw a good error message in case of not enough data.
+     *
      * @throws IOException Thrown if I/O error occurs while reading from the stream or the stream
-     *     cannot offer enough data.
+     *         cannot offer enough data.
      */
     static void readFully(InputStream inputStream, byte[] buf, int off, int len, String type)
             throws IOException {
@@ -401,8 +421,9 @@ public class BlobUtils {
      * @param storageFile (local) file where the blob is/should be stored
      * @param log logger for debug information
      * @param blobStore HA store (or <tt>null</tt> if unavailable)
+     *
      * @throws IOException thrown if an I/O error occurs while moving the file or uploading it to
-     *     the HA store
+     *         the HA store
      */
     static void moveTempFileToStore(
             File incomingFile,
@@ -603,7 +624,8 @@ public class BlobUtils {
     abstract static class Blob<T extends BlobKey> {
         private final T blobKey;
         private final java.nio.file.Path path;
-        @Nullable private final JobID jobId;
+        @Nullable
+        private final JobID jobId;
 
         Blob(T blobKey, java.nio.file.Path path, @Nullable JobID jobId) {
             this.blobKey = blobKey;

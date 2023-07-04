@@ -41,7 +41,9 @@ public class ResourceManagerRuntimeServices {
 
     public ResourceManagerRuntimeServices(
             SlotManager slotManager, JobLeaderIdService jobLeaderIdService) {
+        // DeclarativeSlotManager
         this.slotManager = Preconditions.checkNotNull(slotManager);
+        // DefaultJobLeaderIdService
         this.jobLeaderIdService = Preconditions.checkNotNull(jobLeaderIdService);
     }
 
@@ -61,13 +63,16 @@ public class ResourceManagerRuntimeServices {
             ScheduledExecutor scheduledExecutor,
             SlotManagerMetricGroup slotManagerMetricGroup) {
 
+        // 创建 SlotManager DeclarativeSlotManager
         final SlotManager slotManager =
                 createSlotManager(configuration, scheduledExecutor, slotManagerMetricGroup);
 
+        // 创建 DefaultJobLeaderIdService
         final JobLeaderIdService jobLeaderIdService =
                 new DefaultJobLeaderIdService(
                         highAvailabilityServices, scheduledExecutor, configuration.getJobTimeout());
 
+        // 创建 ResourceManagerRuntimeServices
         return new ResourceManagerRuntimeServices(slotManager, jobLeaderIdService);
     }
 
@@ -91,6 +96,7 @@ public class ResourceManagerRuntimeServices {
                                     slotManagerConfiguration.getDefaultWorkerResourceSpec()),
                             slotManagerConfiguration.getNumSlotsPerWorker()));
         } else {
+            // 创建声明式 SlotManager DeclarativeSlotManager
             return new DeclarativeSlotManager(
                     scheduledExecutor,
                     slotManagerConfiguration,

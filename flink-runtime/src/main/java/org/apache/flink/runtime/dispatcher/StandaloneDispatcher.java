@@ -39,6 +39,7 @@ public class StandaloneDispatcher extends Dispatcher {
             DispatcherBootstrapFactory dispatcherBootstrapFactory,
             DispatcherServices dispatcherServices)
             throws Exception {
+        // 创建 StandaloneDispatcher
         super(
                 rpcService,
                 fencingToken,

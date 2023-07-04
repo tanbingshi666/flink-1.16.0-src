@@ -107,12 +107,16 @@ public class HighAvailabilityServicesUtils {
             FatalErrorHandler fatalErrorHandler)
             throws Exception {
 
+        // 默认返回 NONE
         HighAvailabilityMode highAvailabilityMode = HighAvailabilityMode.fromConfig(configuration);
 
         switch (highAvailabilityMode) {
             case NONE:
+                //  获取 JM 地址
                 final Tuple2<String, Integer> hostnamePort = getJobManagerAddress(configuration);
 
+                // 拼接 Flink ResourceManager Actor 地址
+                // 比如 akka.tcp://flink@node2:45089/user/resourcemanager_*
                 final String resourceManagerRpcUrl =
                         rpcSystemUtils.getRpcUrl(
                                 hostnamePort.f0,
@@ -121,6 +125,8 @@ public class HighAvailabilityServicesUtils {
                                         ResourceManager.RESOURCE_MANAGER_NAME),
                                 addressResolution,
                                 configuration);
+                // 拼接 Flink Dispatcher Actor 地址
+                // 比如 akka.tcp://flink@node2:45089/user/dispatcher_*
                 final String dispatcherRpcUrl =
                         rpcSystemUtils.getRpcUrl(
                                 hostnamePort.f0,
@@ -128,9 +134,13 @@ public class HighAvailabilityServicesUtils {
                                 RpcServiceUtils.createWildcardName(Dispatcher.DISPATCHER_NAME),
                                 addressResolution,
                                 configuration);
+
+                // 拼接 Flink WebMonitor 地址
+                // 格式 http://ip:port
                 final String webMonitorAddress =
                         getWebMonitorAddress(configuration, addressResolution);
 
+                // 创建 StandaloneHaServices (父类 AbstractNonHaServices)
                 return new StandaloneHaServices(
                         resourceManagerRpcUrl, dispatcherRpcUrl, webMonitorAddress);
             case ZOOKEEPER:
@@ -178,9 +188,11 @@ public class HighAvailabilityServicesUtils {
      * Returns the JobManager's hostname and port extracted from the given {@link Configuration}.
      *
      * @param configuration Configuration to extract the JobManager's address from
+     *
      * @return The JobManager's hostname and port
+     *
      * @throws ConfigurationException if the JobManager's address cannot be extracted from the
-     *     configuration
+     *         configuration
      */
     public static Tuple2<String, Integer> getJobManagerAddress(Configuration configuration)
             throws ConfigurationException {
@@ -212,7 +224,8 @@ public class HighAvailabilityServicesUtils {
      *
      * @param configuration Configuration contains those for WebMonitor.
      * @param resolution Whether to try address resolution of the given hostname or not. This allows
-     *     to fail fast in case that the hostname cannot be resolved.
+     *         to fail fast in case that the hostname cannot be resolved.
+     *
      * @return Address of WebMonitor.
      */
     public static String getWebMonitorAddress(
@@ -242,6 +255,7 @@ public class HighAvailabilityServicesUtils {
      * <p>The format is {@code HA_STORAGE_PATH/HA_CLUSTER_ID}.
      *
      * @param configuration containing the configuration values
+     *
      * @return Path under which all highly available cluster artifacts are being stored
      */
     public static Path getClusterHighAvailableStoragePath(Configuration configuration) {
@@ -274,7 +288,9 @@ public class HighAvailabilityServicesUtils {
             throw new IllegalConfigurationException(
                     String.format(
                             "Cannot create cluster high available storage path '%s/%s'. This indicates that an invalid cluster id (%s) has been specified.",
-                            storagePath, clusterId, HighAvailabilityOptions.HA_CLUSTER_ID.key()),
+                            storagePath,
+                            clusterId,
+                            HighAvailabilityOptions.HA_CLUSTER_ID.key()),
                     e);
         }
         return clusterStoragePath;

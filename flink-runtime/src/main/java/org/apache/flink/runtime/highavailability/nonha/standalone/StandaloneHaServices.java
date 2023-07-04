@@ -57,9 +57,12 @@ public class StandaloneHaServices extends AbstractNonHaServices {
             String resourceManagerAddress,
             String dispatcherAddress,
             String clusterRestEndpointAddress) {
+        // Flink ResourceManager 地址
         this.resourceManagerAddress =
                 checkNotNull(resourceManagerAddress, "resourceManagerAddress");
+        // Flink Dispatcher 地址
         this.dispatcherAddress = checkNotNull(dispatcherAddress, "dispatcherAddress");
+        // Flink RestEndpoint 地址
         this.clusterRestEndpointAddress =
                 checkNotNull(clusterRestEndpointAddress, clusterRestEndpointAddress);
     }
@@ -81,7 +84,7 @@ public class StandaloneHaServices extends AbstractNonHaServices {
     public LeaderRetrievalService getDispatcherLeaderRetriever() {
         synchronized (lock) {
             checkNotShutdown();
-
+            // 创建 StandaloneLeaderRetrievalService
             return new StandaloneLeaderRetrievalService(dispatcherAddress, DEFAULT_LEADER_ID);
         }
     }
@@ -99,7 +102,11 @@ public class StandaloneHaServices extends AbstractNonHaServices {
     public LeaderElectionService getDispatcherLeaderElectionService() {
         synchronized (lock) {
             checkNotShutdown();
-
+            // 创建 StandaloneLeaderElectionService
+            /**
+             * 基于 flink-on-yarn 模式提交任务
+             * RestEndpoint ResourceManager Dispatcher 都使用这个类进行选举
+             */
             return new StandaloneLeaderElectionService();
         }
     }
@@ -148,6 +155,7 @@ public class StandaloneHaServices extends AbstractNonHaServices {
         synchronized (lock) {
             checkNotShutdown();
 
+            // 创建 StandaloneLeaderElectionService
             return new StandaloneLeaderElectionService();
         }
     }
