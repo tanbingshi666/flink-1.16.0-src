@@ -76,7 +76,9 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
         this.jobMasterConfiguration = jobMasterConfiguration;
         this.jobGraph = jobGraph;
         this.haServices = haServices;
+        // DefaultSlotPoolServiceSchedulerFactory
         this.slotPoolServiceSchedulerFactory = slotPoolServiceSchedulerFactory;
+        // JobManagerSharedServices
         this.jobManagerSharedServices = jobManagerSharedServices;
         this.heartbeatServices = heartbeatServices;
         this.jobManagerJobMetricGroupFactory = jobManagerJobMetricGroupFactory;
@@ -92,6 +94,7 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
 
         return CompletableFuture.supplyAsync(
                 FunctionUtils.uncheckedSupplier(
+                        // 创建并启动 JobMaster
                         () -> internalCreateJobMasterService(leaderSessionId, onCompletionActions)),
                 executor);
     }
@@ -99,6 +102,7 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
     private JobMasterService internalCreateJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) throws Exception {
 
+        // 创建 JobMaster
         final JobMaster jobMaster =
                 new JobMaster(
                         rpcService,
@@ -124,6 +128,7 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
                                 jobMasterConfiguration.getConfiguration()),
                         initializationTimestamp);
 
+        // 启动 JobMaster Actor 调用 JobMaster.onStart()
         jobMaster.start();
 
         return jobMaster;

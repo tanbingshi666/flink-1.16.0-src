@@ -45,6 +45,7 @@ public class NettyShuffleMaster implements ShuffleMaster<NettyShuffleDescriptor>
 
     private final int networkBufferSize;
 
+    // 创建 NettyShuffleMaster
     public NettyShuffleMaster(Configuration conf) {
         checkNotNull(conf);
         buffersPerInputChannel =

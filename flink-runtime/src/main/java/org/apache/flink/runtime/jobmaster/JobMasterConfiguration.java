@@ -74,17 +74,22 @@ public class JobMasterConfiguration {
 
     public static JobMasterConfiguration fromConfiguration(Configuration configuration) {
 
+        // rpc 超时 默认 10s
         final Time rpcTimeout =
                 Time.fromDuration(configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION));
 
+        // slot 请求超时 默认 5min
         final Time slotRequestTimeout =
                 Time.milliseconds(configuration.getLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
 
+        // JobMaster 工作临时目录
         final String tmpDirectory = ConfigurationUtils.parseTempDirectories(configuration)[0];
 
+        // JobMaster 向 ResourceManager 注册重试配置
         final RetryingRegistrationConfiguration retryingRegistrationConfiguration =
                 RetryingRegistrationConfiguration.fromConfiguration(configuration);
 
+        // 创建 JobMaster 配置
         return new JobMasterConfiguration(
                 rpcTimeout,
                 slotRequestTimeout,

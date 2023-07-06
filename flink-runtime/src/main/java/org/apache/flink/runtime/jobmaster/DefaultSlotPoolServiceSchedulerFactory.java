@@ -73,7 +73,9 @@ public final class DefaultSlotPoolServiceSchedulerFactory
 
     private DefaultSlotPoolServiceSchedulerFactory(
             SlotPoolServiceFactory slotPoolServiceFactory, SchedulerNGFactory schedulerNGFactory) {
+        // DeclarativeSlotPoolBridgeServiceFactory
         this.slotPoolServiceFactory = slotPoolServiceFactory;
+        // DefaultSchedulerFactory
         this.schedulerNGFactory = schedulerNGFactory;
     }
 
@@ -85,6 +87,7 @@ public final class DefaultSlotPoolServiceSchedulerFactory
     @Override
     public SlotPoolService createSlotPoolService(
             JobID jid, DeclarativeSlotPoolFactory declarativeSlotPoolFactory) {
+        // 创建 SlotPool 服务 DeclarativeSlotPoolBridge
         return slotPoolServiceFactory.createSlotPoolService(jid, declarativeSlotPoolFactory);
     }
 
@@ -116,6 +119,10 @@ public final class DefaultSlotPoolServiceSchedulerFactory
             JobStatusListener jobStatusListener,
             BlocklistOperations blocklistOperations)
             throws Exception {
+        // 创建调度器 调用 DefaultSchedulerFactory.createInstance()
+        // 返回 DefaultScheduler
+        // 在创建 DefaultScheduler 过程中会将 JobGraph 转换为 ExecutionGraph
+        // 以及创建 SlotPool
         return schedulerNGFactory.createInstance(
                 log,
                 jobGraph,
@@ -148,6 +155,7 @@ public final class DefaultSlotPoolServiceSchedulerFactory
     public static DefaultSlotPoolServiceSchedulerFactory fromConfiguration(
             Configuration configuration, JobType jobType) {
 
+        // rpc 超时时间 默认 10s
         final Time rpcTimeout =
                 Time.fromDuration(configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION));
         final Time slotIdleTimeout =
@@ -175,15 +183,19 @@ public final class DefaultSlotPoolServiceSchedulerFactory
             schedulerType = JobManagerOptions.SchedulerType.Default;
         }
 
+        // JobMaster 调度类型 默认 Default
         switch (schedulerType) {
             case Default:
+                // 创建 DefaultSchedulerFactory
                 schedulerNGFactory = new DefaultSchedulerFactory();
+                // 创建 SlotPool 服务工厂
                 slotPoolServiceFactory =
                         new DeclarativeSlotPoolBridgeServiceFactory(
                                 SystemClock.getInstance(),
                                 rpcTimeout,
                                 slotIdleTimeout,
                                 batchSlotTimeout,
+                                // 获取请求 slot 匹配策略 SimpleRequestSlotMatchingStrategy
                                 getRequestSlotMatchingStrategy(configuration, jobType));
                 break;
             case Adaptive:
@@ -209,6 +221,7 @@ public final class DefaultSlotPoolServiceSchedulerFactory
                                 schedulerType, JobManagerOptions.SCHEDULER.key()));
         }
 
+        // 创建 DefaultSlotPoolServiceSchedulerFactory
         return new DefaultSlotPoolServiceSchedulerFactory(
                 slotPoolServiceFactory, schedulerNGFactory);
     }

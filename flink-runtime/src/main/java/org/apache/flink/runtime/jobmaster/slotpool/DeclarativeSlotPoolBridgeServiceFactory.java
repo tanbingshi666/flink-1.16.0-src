@@ -36,6 +36,7 @@ public class DeclarativeSlotPoolBridgeServiceFactory extends AbstractSlotPoolSer
             @Nonnull Time batchSlotTimeout,
             @Nonnull RequestSlotMatchingStrategy requestSlotMatchingStrategy) {
         super(clock, rpcTimeout, slotIdleTimeout, batchSlotTimeout);
+        // SimpleRequestSlotMatchingStrategy
         this.requestSlotMatchingStrategy = requestSlotMatchingStrategy;
     }
 
@@ -43,6 +44,7 @@ public class DeclarativeSlotPoolBridgeServiceFactory extends AbstractSlotPoolSer
     @Override
     public SlotPoolService createSlotPoolService(
             @Nonnull JobID jobId, DeclarativeSlotPoolFactory declarativeSlotPoolFactory) {
+        // 创建 DeclarativeSlotPoolBridge
         return new DeclarativeSlotPoolBridge(
                 jobId,
                 declarativeSlotPoolFactory,

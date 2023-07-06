@@ -69,10 +69,10 @@ public class EmbeddedExecutor implements PipelineExecutor {
      * Creates a {@link EmbeddedExecutor}.
      *
      * @param submittedJobIds a list that is going to be filled with the job ids of the new jobs
-     *     that will be submitted. This is essentially used to return the submitted job ids to the
-     *     caller.
+     *         that will be submitted. This is essentially used to return the submitted job ids to the
+     *         caller.
      * @param dispatcherGateway the dispatcher of the cluster which is going to be used to submit
-     *     jobs.
+     *         jobs.
      */
     public EmbeddedExecutor(
             final Collection<JobID> submittedJobIds,
@@ -92,6 +92,7 @@ public class EmbeddedExecutor implements PipelineExecutor {
         checkNotNull(pipeline);
         checkNotNull(configuration);
 
+        // Job ID
         final Optional<JobID> optJobId =
                 configuration
                         .getOptional(PipelineOptionsInternal.PIPELINE_FIXED_JOB_ID)
@@ -101,6 +102,7 @@ public class EmbeddedExecutor implements PipelineExecutor {
             return getJobClientFuture(optJobId.get(), userCodeClassloader);
         }
 
+        // 提交 Job
         return submitAndGetJobClientFuture(pipeline, configuration, userCodeClassloader);
     }
 
@@ -116,23 +118,28 @@ public class EmbeddedExecutor implements PipelineExecutor {
             final Configuration configuration,
             final ClassLoader userCodeClassloader)
             throws MalformedURLException {
+        // 超时时间 默认 60s
         final Time timeout =
                 Time.milliseconds(configuration.get(ClientOptions.CLIENT_TIMEOUT).toMillis());
 
+        // 将 StreamGraph 转换为 JobGraph
         final JobGraph jobGraph =
                 PipelineExecutorUtils.getJobGraph(pipeline, configuration, userCodeClassloader);
         final JobID actualJobId = jobGraph.getJobID();
 
         this.submittedJobIds.add(actualJobId);
+        // Job f773c4d120ead2c3675818c838f45d28 is submitted
         LOG.info("Job {} is submitted.", actualJobId);
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("Effective Configuration: {}", configuration);
         }
 
+        // 提交 Job
         final CompletableFuture<JobID> jobSubmissionFuture =
                 submitJob(configuration, dispatcherGateway, jobGraph, timeout);
 
+        // 异步获取 Job 状态
         return jobSubmissionFuture
                 .thenApplyAsync(
                         FunctionUtils.uncheckedFunction(
@@ -163,24 +170,30 @@ public class EmbeddedExecutor implements PipelineExecutor {
             final Time rpcTimeout) {
         checkNotNull(jobGraph);
 
+        // Submitting Job with JobId=f773c4d120ead2c3675818c838f45d28
         LOG.info("Submitting Job with JobId={}.", jobGraph.getJobID());
 
         return dispatcherGateway
+                // 获取 BlobServer 端口
                 .getBlobServerPort(rpcTimeout)
                 .thenApply(
+                        // 创建连接 BlobServer 地址
                         blobServerPort ->
                                 new InetSocketAddress(
                                         dispatcherGateway.getHostname(), blobServerPort))
                 .thenCompose(
                         blobServerAddress -> {
                             try {
+                                // 将 JobGraph 上传到 BlobServer
                                 ClientUtils.extractAndUploadJobGraphFiles(
                                         jobGraph,
+                                        // 创建 Blob Client
                                         () -> new BlobClient(blobServerAddress, configuration));
                             } catch (FlinkException e) {
                                 throw new CompletionException(e);
                             }
 
+                            // 提交 JobGraph 到 Dispatcher
                             return dispatcherGateway.submitJob(jobGraph, rpcTimeout);
                         })
                 .thenApply(ack -> jobGraph.getJobID());

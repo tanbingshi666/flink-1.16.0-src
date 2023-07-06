@@ -242,6 +242,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         this.metricServiceQueryAddress = dispatcherServices.getMetricQueryServiceAddress();
         this.ioExecutor = dispatcherServices.getIoExecutor();
 
+        // 创建 JobManagerSharedServices
         this.jobManagerSharedServices =
                 JobManagerSharedServices.fromConfiguration(
                         configuration, blobServer, fatalErrorHandler);
@@ -438,8 +439,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     @Override
     public CompletableFuture<Acknowledge> submitJob(JobGraph jobGraph, Time timeout) {
+        // Received JobGraph submission 'CarTopSpeedWindowingExample'
         log.info(
-                "Received JobGraph submission '{}' ({}).", jobGraph.getName(), jobGraph.getJobID());
+                "Received JobGraph submission '{}' ({}).",
+                jobGraph.getName(),
+                jobGraph.getJobID());
 
         try {
             if (isDuplicateJob(jobGraph.getJobID())) {
@@ -467,6 +471,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                 "Currently jobs is not supported if parts of the vertices have "
                                         + "resources configured. The limitation will be removed in future versions."));
             } else {
+                // 提交 JobGraph
                 return internalSubmitJob(jobGraph);
             }
         } catch (FlinkException e) {
@@ -542,8 +547,13 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     }
 
     private CompletableFuture<Acknowledge> internalSubmitJob(JobGraph jobGraph) {
+        // Submitting job 'CarTopSpeedWindowingExample' (f773c4d120ead2c3675818c838f45d28).
         log.info("Submitting job '{}' ({}).", jobGraph.getName(), jobGraph.getJobID());
-        return waitForTerminatingJob(jobGraph.getJobID(), jobGraph, this::persistAndRunJob)
+
+        return waitForTerminatingJob(
+                jobGraph.getJobID(), jobGraph,
+                // 运行 Job
+                this::persistAndRunJob)
                 .handle((ignored, throwable) -> handleTermination(jobGraph.getJobID(), throwable))
                 .thenCompose(Function.identity());
     }
@@ -578,12 +588,22 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     }
 
     private void persistAndRunJob(JobGraph jobGraph) throws Exception {
+        // StandaloneJobGraphStore Nothing to do
         jobGraphWriter.putJobGraph(jobGraph);
-        runJob(createJobMasterRunner(jobGraph), ExecutionType.SUBMISSION);
+
+        // 运行 Job
+        runJob(
+                // 创建 JobMasterRunner 返回 JobMasterServiceLeadershipRunner
+                createJobMasterRunner(jobGraph),
+                // 提交任务类型为 SUBMISSION
+                ExecutionType.SUBMISSION);
     }
 
     private JobManagerRunner createJobMasterRunner(JobGraph jobGraph) throws Exception {
         Preconditions.checkState(!jobManagerRunnerRegistry.isRegistered(jobGraph.getJobID()));
+        // 创建 JobMaster
+        // 调用 JobMasterServiceLeadershipRunnerFactory.createJobManagerRunner()
+        // 返回 JobMasterServiceLeadershipRunner
         return jobManagerRunnerFactory.createJobManagerRunner(
                 jobGraph,
                 configuration,
@@ -607,6 +627,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     private void runJob(JobManagerRunner jobManagerRunner, ExecutionType executionType)
             throws Exception {
+        // 启动 JobMasterServiceLeadershipRunner
+        // 调用 JobMasterServiceLeadershipRunner.start()
+        // 最终调用 JobMasterServiceLeadershipRunner.grantLeadership()
         jobManagerRunner.start();
         jobManagerRunnerRegistry.register(jobManagerRunner);
 

@@ -547,6 +547,7 @@ public class Task
     @Override
     public void run() {
         try {
+            // 执行
             doRun();
         } finally {
             terminationFuture.complete(executionState);
@@ -607,6 +608,7 @@ public class Task
 
             // first of all, get a user-code classloader
             // this may involve downloading the job's JAR files and/or classes
+            // Loading JAR files for task Source: in-memory-source -> Timestamps/Watermarks (1/1)#0 (e94e7142833be29b5387389c2c4f1e74_cbc357ccb763df2852fee8c4fc7d55f2_0_0) [DEPLOYING].
             LOG.info("Loading JAR files for task {}.", this);
 
             userCodeClassLoader = createUserCodeClassloader();

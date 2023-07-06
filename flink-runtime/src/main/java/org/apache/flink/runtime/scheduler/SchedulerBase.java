@@ -178,6 +178,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             throws Exception {
 
         this.log = checkNotNull(log);
+        // JobGraph
         this.jobGraph = checkNotNull(jobGraph);
         this.executionGraphFactory = executionGraphFactory;
 
@@ -202,6 +203,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         this.deploymentStateTimeMetrics =
                 new DeploymentStateTimeMetrics(jobGraph.getJobType(), jobStatusMetricsSettings);
 
+        // 将 JobGraph 转换成 ExecutionGraph
         this.executionGraph =
                 createAndRestoreExecutionGraph(
                         completedCheckpointStore,
@@ -212,6 +214,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         jobStatusListener,
                         vertexParallelismStore);
 
+        // 从 ExecutionGraph 获取调度拓扑
         this.schedulingTopology = executionGraph.getSchedulingTopology();
 
         stateLocationRetriever =
@@ -264,6 +267,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * Get a default value to use for a given vertex's max parallelism if none was specified.
      *
      * @param vertex the vertex to compute a default max parallelism for
+     *
      * @return the computed max parallelism
      */
     public static int getDefaultMaxParallelism(JobVertex vertex) {
@@ -284,8 +288,9 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      *
      * @param vertices the vertices to compute parallelism for
      * @param defaultMaxParallelismFunc a function for computing a default max parallelism if none
-     *     is specified on a given vertex
+     *         is specified on a given vertex
      * @param normalizeParallelismFunc a function for normalizing vertex parallelism
+     *
      * @return the computed parallelism store
      */
     public static VertexParallelismStore computeVertexParallelismStore(
@@ -317,7 +322,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                                     autoConfigured
                                             ? Optional.empty()
                                             : Optional.of(
-                                                    "Cannot override a configured max parallelism."));
+                                            "Cannot override a configured max parallelism."));
             store.setParallelismInfo(vertex.getID(), parallelismInfo);
         }
 
@@ -329,6 +334,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * and ensure that the returned store contains valid parallelisms.
      *
      * @param vertices the vertices to compute parallelism for
+     *
      * @return the computed parallelism store
      */
     public static VertexParallelismStore computeVertexParallelismStore(
@@ -341,6 +347,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * set defaults and ensure that the returned store contains valid parallelisms.
      *
      * @param jobGraph the job graph to retrieve vertices from
+     *
      * @return the computed parallelism store
      */
     public static VertexParallelismStore computeVertexParallelismStore(JobGraph jobGraph) {
@@ -357,7 +364,9 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             VertexParallelismStore vertexParallelismStore)
             throws Exception {
 
+        // 将 JobGraph 转换为 ExecutionGraph
         final ExecutionGraph newExecutionGraph =
+                // 调用 DefaultExecutionGraphFactory.createAndRestoreExecutionGraph()
                 executionGraphFactory.createAndRestoreExecutionGraph(
                         jobGraph,
                         completedCheckpointStore,
@@ -603,6 +612,8 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                 executionGraph.getStatusTimestamp(JobStatus.INITIALIZING),
                 jobStatusMetricsSettings);
         operatorCoordinatorHandler.startAllOperatorCoordinators();
+
+        // 开启执行调度任务 调用 DefaultScheduler.startSchedulingInternal()
         startSchedulingInternal();
     }
 
@@ -996,7 +1007,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * Executions} of the underlying {@link ExecutionGraph}.
      *
      * @return a {@code CompletableFuture} that completes after all underlying {@code Executions}
-     *     have been terminated.
+     *         have been terminated.
      */
     private CompletableFuture<Collection<ExecutionState>> getCombinedExecutionTerminationFuture() {
         return FutureUtils.combineAll(

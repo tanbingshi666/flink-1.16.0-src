@@ -145,6 +145,7 @@ public abstract class RetryingRegistration<
             final CompletableFuture<G> rpcGatewayFuture;
 
             if (FencedRpcGateway.class.isAssignableFrom(targetType)) {
+                // 连接 ResourceManager
                 rpcGatewayFuture =
                         (CompletableFuture<G>)
                                 rpcService.connect(
@@ -159,7 +160,10 @@ public abstract class RetryingRegistration<
             CompletableFuture<Void> rpcGatewayAcceptFuture =
                     rpcGatewayFuture.thenAcceptAsync(
                             (G rpcGateway) -> {
+                                // Resolved ResourceManager address, beginning registration
                                 log.info("Resolved {} address, beginning registration", targetName);
+                                // JobMaster 向 ResourceManager 注册
+                                // 调用
                                 register(
                                         rpcGateway,
                                         1,
@@ -345,11 +349,14 @@ public abstract class RetryingRegistration<
     }
 
     static final class RetryingRegistrationResult<G, S, R> {
-        @Nullable private final G gateway;
+        @Nullable
+        private final G gateway;
 
-        @Nullable private final S success;
+        @Nullable
+        private final S success;
 
-        @Nullable private final R rejection;
+        @Nullable
+        private final R rejection;
 
         private RetryingRegistrationResult(
                 @Nullable G gateway, @Nullable S success, @Nullable R rejection) {
@@ -382,18 +389,18 @@ public abstract class RetryingRegistration<
         }
 
         static <
-                        G extends RpcGateway,
-                        S extends RegistrationResponse.Success,
-                        R extends RegistrationResponse.Rejection>
-                RetryingRegistrationResult<G, S, R> success(G gateway, S success) {
+                G extends RpcGateway,
+                S extends RegistrationResponse.Success,
+                R extends RegistrationResponse.Rejection>
+        RetryingRegistrationResult<G, S, R> success(G gateway, S success) {
             return new RetryingRegistrationResult<>(gateway, success, null);
         }
 
         static <
-                        G extends RpcGateway,
-                        S extends RegistrationResponse.Success,
-                        R extends RegistrationResponse.Rejection>
-                RetryingRegistrationResult<G, S, R> rejection(R rejection) {
+                G extends RpcGateway,
+                S extends RegistrationResponse.Success,
+                R extends RegistrationResponse.Rejection>
+        RetryingRegistrationResult<G, S, R> rejection(R rejection) {
             return new RetryingRegistrationResult<>(null, null, rejection);
         }
     }

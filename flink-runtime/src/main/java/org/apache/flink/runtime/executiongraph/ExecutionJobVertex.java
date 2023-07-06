@@ -91,19 +91,24 @@ public class ExecutionJobVertex
 
     private final JobVertex jobVertex;
 
-    @Nullable private ExecutionVertex[] taskVertices;
+    @Nullable
+    private ExecutionVertex[] taskVertices;
 
-    @Nullable private IntermediateResult[] producedDataSets;
+    @Nullable
+    private IntermediateResult[] producedDataSets;
 
-    @Nullable private List<IntermediateResult> inputs;
+    @Nullable
+    private List<IntermediateResult> inputs;
 
     private final VertexParallelismInformation parallelismInfo;
 
     private final SlotSharingGroup slotSharingGroup;
 
-    @Nullable private final CoLocationGroup coLocationGroup;
+    @Nullable
+    private final CoLocationGroup coLocationGroup;
 
-    @Nullable private InputSplit[] inputSplits;
+    @Nullable
+    private InputSplit[] inputSplits;
 
     private final ResourceProfile resourceProfile;
 
@@ -117,9 +122,11 @@ public class ExecutionJobVertex
     private Either<SerializedValue<TaskInformation>, PermanentBlobKey> taskInformationOrBlobKey =
             null;
 
-    @Nullable private Collection<OperatorCoordinatorHolder> operatorCoordinators;
+    @Nullable
+    private Collection<OperatorCoordinatorHolder> operatorCoordinators;
 
-    @Nullable private InputSplitAssigner splitAssigner;
+    @Nullable
+    private InputSplitAssigner splitAssigner;
 
     @VisibleForTesting
     public ExecutionJobVertex(
@@ -132,9 +139,11 @@ public class ExecutionJobVertex
             throw new NullPointerException();
         }
 
+        // ExecutionGraph
         this.graph = graph;
+        // JobVertex
         this.jobVertex = jobVertex;
-
+        // 一个 JobVertex 并行度信息
         this.parallelismInfo = parallelismInfo;
 
         // verify that our parallelism is not higher than the maximum parallelism
@@ -166,17 +175,23 @@ public class ExecutionJobVertex
         checkState(parallelismInfo.getParallelism() > 0);
         checkState(!isInitialized());
 
+        // 根据 JobVertex 的并行度创建空数组 ExecutionVertex
         this.taskVertices = new ExecutionVertex[parallelismInfo.getParallelism()];
 
+        // 获取 JobVertex 的输入 JobEdge 边个数创建对应空数组 IntermediateResult
         this.inputs = new ArrayList<>(jobVertex.getInputs().size());
 
         // create the intermediate results
+        // JobVertex 输出数据集 不考虑侧输出流情况下 默认为 1
         this.producedDataSets =
                 new IntermediateResult[jobVertex.getNumberOfProducedIntermediateDataSets()];
 
         for (int i = 0; i < jobVertex.getProducedDataSets().size(); i++) {
             final IntermediateDataSet result = jobVertex.getProducedDataSets().get(i);
 
+            // 创建 IntermediateResult
+            // 在不考虑侧输出流情况下 一个 ExecutionJobVertex 对应一个 IntermediateResult
+            // 一个 JobVertex 有 N 个并行度 IntermediateResult 则创建 N 个 IntermediateResultPartition
             this.producedDataSets[i] =
                     new IntermediateResult(
                             result,
@@ -186,7 +201,10 @@ public class ExecutionJobVertex
         }
 
         // create all task vertices
+        // 根据 JobVertex 的并行度创建对应的 ExecutionVertex
         for (int i = 0; i < this.parallelismInfo.getParallelism(); i++) {
+            // 创建 ExecutionVertex
+            // 一个 JobVertex 有 N 个并行度 IntermediateResult 则创建 N 个 IntermediateResultPartition
             ExecutionVertex vertex =
                     createExecutionVertex(
                             this,
@@ -197,6 +215,7 @@ public class ExecutionJobVertex
                             executionHistorySizeLimit,
                             initialAttemptCounts.getAttemptCount(i));
 
+            // 一个并行度就是一个 ExecutionVertex
             this.taskVertices[i] = vertex;
         }
 
@@ -268,6 +287,7 @@ public class ExecutionJobVertex
             long createTimestamp,
             int executionHistorySizeLimit,
             int initialAttemptCount) {
+        // 创建 ExecutionVertex
         return new ExecutionVertex(
                 jobVertex,
                 subTaskIndex,
@@ -442,6 +462,7 @@ public class ExecutionJobVertex
             throws JobException {
         checkState(isInitialized());
 
+        // 获取当前 ExecutionJobVertex 输入边 JobEdge
         List<JobEdge> inputs = jobVertex.getInputs();
 
         if (LOG.isDebugEnabled()) {
@@ -478,6 +499,7 @@ public class ExecutionJobVertex
             // fetch the intermediate result via ID. if it does not exist, then it either has not
             // been created, or the order
             // in which this method is called for the job vertices is not a topological order
+            // 获取上游结果输入 IntermediateResult
             IntermediateResult ires = intermediateDataSets.get(edge.getSourceId());
             if (ires == null) {
                 throw new JobException(
@@ -487,6 +509,7 @@ public class ExecutionJobVertex
 
             this.inputs.add(ires);
 
+            // 当前 ExecutionJobVertex 连接上游 ExecutionJobVertex
             EdgeManagerBuildUtil.connectVertexToResult(this, ires, edge.getDistributionPattern());
         }
     }
@@ -592,8 +615,9 @@ public class ExecutionJobVertex
      * on.
      *
      * @param verticesPerState The number of vertices in each state (indexed by the ordinal of the
-     *     ExecutionState values).
+     *         ExecutionState values).
      * @param parallelism The parallelism of the ExecutionJobVertex
+     *
      * @return The aggregate state of this ExecutionJobVertex.
      */
     public static ExecutionState getAggregateJobVertexState(
@@ -631,6 +655,7 @@ public class ExecutionJobVertex
                 JobVertex jobVertex,
                 VertexParallelismInformation parallelismInfo)
                 throws JobException {
+            // 创建 ExecutionJobVertex
             return new ExecutionJobVertex(graph, jobVertex, parallelismInfo);
         }
     }

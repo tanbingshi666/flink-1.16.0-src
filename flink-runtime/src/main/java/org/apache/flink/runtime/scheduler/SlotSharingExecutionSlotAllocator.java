@@ -117,6 +117,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                         .map(ExecutionAttemptID::getExecutionVertexId)
                         .collect(Collectors.toList());
 
+        // 申请 slot
         return allocateSlotsForVertices(vertexIds).stream()
                 .map(
                         vertexAssignment ->
@@ -153,6 +154,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     private List<SlotExecutionVertexAssignment> allocateSlotsForVertices(
             List<ExecutionVertexID> executionVertexIds) {
 
+        // Slot 共享组相关计算以及配置
         SharedSlotProfileRetriever sharedSlotProfileRetriever =
                 sharedSlotProfileRetrieverFactory.createFromBulk(new HashSet<>(executionVertexIds));
         Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup =
@@ -162,7 +164,9 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                         slotSharingStrategy::getExecutionSlotSharingGroup));
         Map<ExecutionSlotSharingGroup, SharedSlot> slots =
                 executionsByGroup.keySet().stream()
-                        .map(group -> getOrAllocateSharedSlot(group, sharedSlotProfileRetriever))
+                        .map(
+                                // 申请 slot
+                                group -> getOrAllocateSharedSlot(group, sharedSlotProfileRetriever))
                         .collect(
                                 Collectors.toMap(
                                         SharedSlot::getExecutionSlotSharingGroup,
@@ -202,9 +206,9 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     }
 
     private static Map<ExecutionVertexID, SlotExecutionVertexAssignment>
-            allocateLogicalSlotsFromSharedSlots(
-                    Map<ExecutionSlotSharingGroup, SharedSlot> slots,
-                    Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup) {
+    allocateLogicalSlotsFromSharedSlots(
+            Map<ExecutionSlotSharingGroup, SharedSlot> slots,
+            Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup) {
 
         Map<ExecutionVertexID, SlotExecutionVertexAssignment> assignments = new HashMap<>();
 
@@ -243,6 +247,8 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                     slotProfile,
                                     slotWillBeOccupiedIndefinitely);
                     CompletableFuture<PhysicalSlot> physicalSlotFuture =
+                            // 申请 slot
+                            // 调用 PhysicalSlotProviderImpl.allocatePhysicalSlot()
                             slotProvider
                                     .allocatePhysicalSlot(physicalSlotRequest)
                                     .thenApply(PhysicalSlotRequest.Result::getPhysicalSlot);

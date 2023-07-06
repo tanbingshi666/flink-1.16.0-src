@@ -61,10 +61,12 @@ public class YarnTaskExecutorRunner {
      * @param args The command line arguments.
      */
     public static void main(String[] args) {
+        // 打印日志相关的
         EnvironmentInformation.logEnvironmentInfo(LOG, "YARN TaskExecutor runner", args);
         SignalHandler.register(LOG);
         JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
+        // 运行 TaskManager
         runTaskManagerSecurely(args);
     }
 
@@ -84,6 +86,7 @@ public class YarnTaskExecutorRunner {
             final String currDir = ENV.get(Environment.PWD.key());
             LOG.info("Current working Directory: {}", currDir);
 
+            // 配置相关
             configuration = TaskManagerRunner.loadConfiguration(args);
             setupAndModifyConfiguration(configuration, currDir, ENV);
         } catch (Throwable t) {
@@ -91,6 +94,7 @@ public class YarnTaskExecutorRunner {
             System.exit(INIT_ERROR_EXIT_CODE);
         }
 
+        // 启动 TaskManager
         TaskManagerRunner.runTaskManagerProcessSecurely(Preconditions.checkNotNull(configuration));
     }
 
@@ -99,6 +103,7 @@ public class YarnTaskExecutorRunner {
             Configuration configuration, String currDir, Map<String, String> variables)
             throws Exception {
         final String localDirs = variables.get(Environment.LOCAL_DIRS.key());
+        // Current working/local Directory: /opt/app/hadoop-3.1.3/data/nm-local-dir/usercache/hdfs/appcache/application_1688453821841_0002
         LOG.info("Current working/local Directory: {}", localDirs);
 
         BootstrapTools.updateTmpDirectoriesInConfiguration(configuration, localDirs);

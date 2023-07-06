@@ -92,15 +92,20 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
             final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex) {
         validateExecutionStates(executionsToDeploy);
 
+        // 调度状态改变
         transitionToScheduled(executionsToDeploy);
 
+        // 为 Execution 申请 slot
+        // 最终调用 ResourceManager.declareRequiredResources() 请求 slot
         final List<ExecutionSlotAssignment> executionSlotAssignments =
                 allocateSlotsFor(executionsToDeploy);
 
+        // 创建部署 handler
         final List<ExecutionDeploymentHandle> deploymentHandles =
                 createDeploymentHandles(
                         executionsToDeploy, requiredVersionByVertex, executionSlotAssignments);
 
+        // 等待 slot 申请然后开始部署
         waitForAllSlotsAndDeploy(deploymentHandles);
     }
 
@@ -124,6 +129,8 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
                 executionsToDeploy.stream()
                         .map(Execution::getAttemptId)
                         .collect(Collectors.toList());
+        // 申请 slot
+        // 调用 SlotSharingExecutionSlotAllocatorFactory.allocateSlotsFor()
         return executionSlotAllocator.allocateSlotsFor(executionAttemptIds);
     }
 
@@ -152,6 +159,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
     private void waitForAllSlotsAndDeploy(final List<ExecutionDeploymentHandle> deploymentHandles) {
         FutureUtils.assertNoException(
                 assignAllResourcesAndRegisterProducedPartitions(deploymentHandles)
+                        // 部署
                         .handle(deployAll(deploymentHandles)));
     }
 
@@ -188,6 +196,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
                 checkState(slotAssigned.isDone());
 
                 FutureUtils.assertNoException(
+                        // 部署
                         slotAssigned.handle(deployOrHandleError(deploymentHandle)));
             }
             return null;
@@ -307,6 +316,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
             }
 
             if (throwable == null) {
+                // 部署
                 deployTaskSafe(execution);
             } else {
                 handleTaskDeploymentFailure(execution, throwable);
@@ -317,6 +327,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
 
     private void deployTaskSafe(final Execution execution) {
         try {
+            // 执行部署
             executionOperations.deploy(execution);
         } catch (Throwable e) {
             handleTaskDeploymentFailure(execution, e);
@@ -373,6 +384,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
                 Time partitionRegistrationTimeout,
                 BiConsumer<ExecutionVertexID, AllocationID> allocationReservationFunc,
                 ComponentMainThreadExecutor mainThreadExecutor) {
+            // 创建 DefaultExecutionDeployer
             return new DefaultExecutionDeployer(
                     log,
                     executionSlotAllocator,

@@ -168,10 +168,12 @@ public class Execution
     /**
      * Information to restore the task on recovery, such as checkpoint id and task state snapshot.
      */
-    @Nullable private JobManagerTaskRestore taskRestore;
+    @Nullable
+    private JobManagerTaskRestore taskRestore;
 
     /** This field holds the allocation id once it was assigned successfully. */
-    @Nullable private AllocationID assignedAllocationID;
+    @Nullable
+    private AllocationID assignedAllocationID;
 
     // ------------------------ Accumulators & Metrics ------------------------
 
@@ -195,7 +197,7 @@ public class Execution
      * Creates a new Execution attempt.
      *
      * @param executor The executor used to dispatch callbacks from futures and asynchronous RPC
-     *     calls.
+     *         calls.
      * @param vertex The execution vertex to which this Execution belongs
      * @param attemptNumber The execution attempt number.
      * @param startTimestamp The timestamp that marks the creation of this Execution
@@ -277,6 +279,7 @@ public class Execution
      * is in state SCHEDULED. Returns true, if the resource could be assigned.
      *
      * @param logicalSlot to assign to this execution
+     *
      * @return true if the slot could be assigned to the execution, otherwise false
      */
     public boolean tryAssignResource(final LogicalSlot logicalSlot) {
@@ -454,11 +457,11 @@ public class Execution
     }
 
     private static CompletableFuture<
-                    Map<IntermediateResultPartitionID, ResultPartitionDeploymentDescriptor>>
-            registerProducedPartitions(
-                    ExecutionVertex vertex,
-                    TaskManagerLocation location,
-                    ExecutionAttemptID attemptId) {
+            Map<IntermediateResultPartitionID, ResultPartitionDeploymentDescriptor>>
+    registerProducedPartitions(
+            ExecutionVertex vertex,
+            TaskManagerLocation location,
+            ExecutionAttemptID attemptId) {
 
         ProducerDescriptor producerDescriptor = ProducerDescriptor.create(location, attemptId);
 
@@ -558,6 +561,8 @@ public class Execution
                 return;
             }
 
+            // Deploying Source: in-memory-source -> Timestamps/Watermarks (1/1) (attempt #0) with attempt id e94e7142833be29b5387389c2c4f1e74_cbc357ccb763df2852fee8c4fc7d55f2_0_0 and vertex id cbc357ccb763df2852fee8c4fc7d55f2_0 to container_1688453821841_0002_01_000002 @ node2 (dataPort=35529) with allocation id 92607b005f6fd3b1ffe2ea1f864dbad5
+            // Deploying GlobalWindows -> Sink: Print to Std. Out (1/1) (attempt #0) with attempt id e94e7142833be29b5387389c2c4f1e74_90bea66de1c231edf33913ecd54406c1_0_0 and vertex id 90bea66de1c231edf33913ecd54406c1_0 to container_1688453821841_0002_01_000002 @ node2 (dataPort=35529) with allocation id 92607b005f6fd3b1ffe2ea1f864dbad5
             LOG.info(
                     "Deploying {} (attempt #{}) with attempt id {} and vertex id {} to {} with allocation id {}",
                     vertex.getTaskNameWithSubtaskIndex(),
@@ -577,6 +582,7 @@ public class Execution
             // null taskRestore to let it be GC'ed
             taskRestore = null;
 
+            // 获取 Task TM 网关
             final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
             final ComponentMainThreadExecutor jobMasterMainThreadExecutor =
@@ -587,6 +593,7 @@ public class Execution
             // does not block
             // the main thread and sync back to the main thread once submission is completed.
             CompletableFuture.supplyAsync(
+                            // 发送部署请求
                             () -> taskManagerGateway.submitTask(deployment, rpcTimeout), executor)
                     .thenCompose(Function.identity())
                     .whenCompleteAsync(
@@ -785,8 +792,8 @@ public class Execution
      * @param completedCheckpointId of the completed checkpoint
      * @param completedTimestamp of the completed checkpoint
      * @param lastSubsumedCheckpointId of the last subsumed checkpoint, a value of {@link
-     *     org.apache.flink.runtime.checkpoint.CheckpointStoreUtil#INVALID_CHECKPOINT_ID} means no
-     *     checkpoint has been subsumed.
+     *         org.apache.flink.runtime.checkpoint.CheckpointStoreUtil#INVALID_CHECKPOINT_ID} means no
+     *         checkpoint has been subsumed.
      */
     public void notifyCheckpointOnComplete(
             long completedCheckpointId, long completedTimestamp, long lastSubsumedCheckpointId) {
@@ -841,6 +848,7 @@ public class Execution
      * @param checkpointId of th checkpoint to trigger
      * @param timestamp of the checkpoint to trigger
      * @param checkpointOptions of the checkpoint to trigger
+     *
      * @return Future acknowledge which is returned once the checkpoint has been triggered
      */
     public CompletableFuture<Acknowledge> triggerCheckpoint(
@@ -854,6 +862,7 @@ public class Execution
      * @param checkpointId of th checkpoint to trigger
      * @param timestamp of the checkpoint to trigger
      * @param checkpointOptions of the checkpoint to trigger
+     *
      * @return Future acknowledge which is returned once the checkpoint has been triggered
      */
     public CompletableFuture<Acknowledge> triggerSynchronousSavepoint(
@@ -1042,7 +1051,8 @@ public class Execution
                     String message =
                             String.format(
                                     "Asynchronous race: Found %s in state %s after successful cancel call.",
-                                    vertex.getTaskNameWithSubtaskIndex(), state);
+                                    vertex.getTaskNameWithSubtaskIndex(),
+                                    state);
                     LOG.error(message);
                     vertex.getExecutionGraphAccessor().failGlobal(new Exception(message));
                 }
@@ -1089,14 +1099,14 @@ public class Execution
      *
      * @param t Failure cause
      * @param cancelTask Indicating whether to send a PRC call to remove task from TaskManager. True
-     *     if the failure is fired by JobManager and the execution is already deployed. Otherwise it
-     *     should be false.
+     *         if the failure is fired by JobManager and the execution is already deployed. Otherwise it
+     *         should be false.
      * @param userAccumulators User accumulators
      * @param metrics IO metrics
      * @param releasePartitions Indicating whether to release result partitions produced by this
-     *     execution. False if the task is FAILED in TaskManager, otherwise true.
+     *         execution. False if the task is FAILED in TaskManager, otherwise true.
      * @param fromSchedulerNg Indicating whether the failure is from the SchedulerNg. It should be
-     *     false if it is from within the ExecutionGraph.
+     *         false if it is from within the ExecutionGraph.
      */
     private void processFail(
             Throwable t,
@@ -1163,8 +1173,8 @@ public class Execution
 
         if (cancelTask
                 && (stateBeforeFailed == RUNNING
-                        || stateBeforeFailed == INITIALIZING
-                        || stateBeforeFailed == DEPLOYING)) {
+                || stateBeforeFailed == INITIALIZING
+                || stateBeforeFailed == DEPLOYING)) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Sending out cancel request, to remove task execution from TaskManager.");
             }
@@ -1227,7 +1237,10 @@ public class Execution
                 String message =
                         String.format(
                                 "Concurrent unexpected state transition of task %s from %s (expected %s) to %s while deployment was in progress.",
-                                getAttemptId(), currentState, from, to);
+                                getAttemptId(),
+                                currentState,
+                                from,
+                                to);
 
                 LOG.debug(message);
 
@@ -1523,10 +1536,10 @@ public class Execution
                 userAccumulators == null
                         ? null
                         : userAccumulators.entrySet().stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                Map.Entry::getKey,
-                                                entry -> OptionalFailure.of(entry.getValue())));
+                        .collect(
+                                Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        entry -> OptionalFailure.of(entry.getValue())));
         return StringifiedAccumulatorResult.stringifyAccumulatorResults(accumulators);
     }
 

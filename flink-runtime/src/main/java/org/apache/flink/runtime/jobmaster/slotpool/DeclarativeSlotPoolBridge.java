@@ -65,7 +65,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     private final RequestSlotMatchingStrategy requestSlotMatchingStrategy;
 
-    @Nullable private ComponentMainThreadExecutor componentMainThreadExecutor;
+    @Nullable
+    private ComponentMainThreadExecutor componentMainThreadExecutor;
 
     private final Time batchSlotTimeout;
     private boolean isBatchSlotRequestTimeoutCheckDisabled;
@@ -109,6 +110,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     protected void onStart(ComponentMainThreadExecutor componentMainThreadExecutor) {
         this.componentMainThreadExecutor = componentMainThreadExecutor;
 
+        // 注册 slot 监听器(当 JobMaster 申请 slot  TaskExecutor 提供 slot 回调 newSlotsAreAvailable)
         getDeclarativeSlotPool().registerNewSlotsListener(this::newSlotsAreAvailable);
 
         componentMainThreadExecutor.schedule(
@@ -200,6 +202,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     @VisibleForTesting
     void newSlotsAreAvailable(Collection<? extends PhysicalSlot> newSlots) {
+        // 匹配 slot
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
                         newSlots, pendingRequests.values());
@@ -214,6 +217,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                     pendingRequests.remove(pendingRequest.getSlotRequestId()),
                     "Cannot fulfill a non existing pending slot request.");
 
+            // 可用 slot
             reserveFreeSlot(
                     pendingRequest.getSlotRequestId(),
                     slot.getAllocationId(),
@@ -228,6 +232,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             final PhysicalSlot slot = requestSlotMatch.getSlot();
 
             Preconditions.checkState(
+                    // 填充 slot
                     pendingRequest.fulfill(slot), "Pending requests must be fulfillable.");
         }
     }
@@ -237,7 +242,9 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             AllocationID allocationId,
             ResourceProfile resourceProfile) {
         log.debug("Reserve slot {} for slot request id {}", allocationId, slotRequestId);
+        // 可用 slot
         getDeclarativeSlotPool().reserveFreeSlot(allocationId, resourceProfile);
+        // 缓存
         fulfilledRequests.put(slotRequestId, allocationId);
     }
 
@@ -287,10 +294,12 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 slotRequestId,
                 resourceProfile);
 
+        // 创建 slot 请求 PendingRequest
         final PendingRequest pendingRequest =
                 PendingRequest.createNormalRequest(
                         slotRequestId, resourceProfile, preferredAllocations);
 
+        // 请求 slot
         return internalRequestNewSlot(pendingRequest, timeout);
     }
 
@@ -316,9 +325,12 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     private CompletableFuture<PhysicalSlot> internalRequestNewSlot(
             PendingRequest pendingRequest, @Nullable Time timeout) {
+        // 异步发送 slot 请求
+        // 最终调用 ResourceManager.declareRequiredResources() 请求 slot
         internalRequestNewAllocatedSlot(pendingRequest);
 
         if (timeout == null) {
+            // 异步操作
             return pendingRequest.getSlotFuture();
         } else {
             return FutureUtils.orTimeout(
@@ -342,10 +354,14 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     }
 
     private void internalRequestNewAllocatedSlot(PendingRequest pendingRequest) {
+        // 先缓存 slot 请求
         pendingRequests.put(pendingRequest.getSlotRequestId(), pendingRequest);
 
+        // 获取 DeclarativeSlotPool
         getDeclarativeSlotPool()
+                // 请求 slot
                 .increaseResourceRequirementsBy(
+                        // 封装请求资源
                         ResourceCounter.withResource(pendingRequest.getResourceProfile(), 1));
     }
 

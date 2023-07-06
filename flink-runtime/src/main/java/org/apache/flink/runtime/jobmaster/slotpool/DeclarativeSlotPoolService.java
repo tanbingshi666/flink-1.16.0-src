@@ -68,11 +68,13 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
 
     private DeclareResourceRequirementServiceConnectionManager
             resourceRequirementServiceConnectionManager =
-                    NoOpDeclareResourceRequirementServiceConnectionManager.INSTANCE;
+            NoOpDeclareResourceRequirementServiceConnectionManager.INSTANCE;
 
-    @Nullable private JobMasterId jobMasterId;
+    @Nullable
+    private JobMasterId jobMasterId;
 
-    @Nullable private String jobManagerAddress;
+    @Nullable
+    private String jobManagerAddress;
 
     private State state = State.CREATED;
 
@@ -87,6 +89,7 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
         this.rpcTimeout = rpcTimeout;
         this.registeredTaskManagers = new HashSet<>();
 
+        // 创建 SlotPool DefaultDeclarativeSlotPool
         this.declarativeSlotPool =
                 declarativeSlotPoolFactory.create(
                         jobId, this::declareResourceRequirements, idleSlotTimeout, rpcTimeout);
@@ -119,10 +122,12 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
         this.jobMasterId = Preconditions.checkNotNull(jobMasterId);
         this.jobManagerAddress = Preconditions.checkNotNull(address);
 
+        // 创建 DefaultDeclareResourceRequirementServiceConnectionManager
         this.resourceRequirementServiceConnectionManager =
                 DefaultDeclareResourceRequirementServiceConnectionManager.create(
                         mainThreadExecutor);
 
+        // 启动 slot 向 ResourceManager 申请 slot 资源
         onStart(mainThreadExecutor);
 
         state = State.STARTED;
@@ -134,7 +139,8 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      *
      * @param componentMainThreadExecutor componentMainThreadExecutor used by this slot pool service
      */
-    protected void onStart(ComponentMainThreadExecutor componentMainThreadExecutor) {}
+    protected void onStart(ComponentMainThreadExecutor componentMainThreadExecutor) {
+    }
 
     protected void assertHasBeenStarted() {
         Preconditions.checkState(
@@ -162,7 +168,8 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      * This method is called when the slot pool service is closed. It can be overridden by
      * subclasses.
      */
-    protected void onClose() {}
+    protected void onClose() {
+    }
 
     @Override
     public Collection<SlotOffer> offerSlots(
@@ -178,6 +185,7 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
             return Collections.emptyList();
         }
 
+        // SlotPool 接收到 slot
         return declarativeSlotPool.offerSlots(
                 offers, taskManagerLocation, taskManagerGateway, clock.relativeTimeMillis());
     }
@@ -211,9 +219,10 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      * This method is called when an allocation fails. It can be overridden by subclasses.
      *
      * @param previouslyFulfilledRequirements previouslyFulfilledRequirements by the failed
-     *     allocation
+     *         allocation
      */
-    protected void onFailAllocation(ResourceCounter previouslyFulfilledRequirements) {}
+    protected void onFailAllocation(ResourceCounter previouslyFulfilledRequirements) {
+    }
 
     @Override
     public boolean registerTaskManager(ResourceID taskManagerId) {
@@ -281,9 +290,10 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      * This method is called when a TaskManager is released. It can be overridden by subclasses.
      *
      * @param previouslyFulfilledRequirement previouslyFulfilledRequirement by the released
-     *     TaskManager
+     *         TaskManager
      */
-    protected void onReleaseTaskManager(ResourceCounter previouslyFulfilledRequirement) {}
+    protected void onReleaseTaskManager(ResourceCounter previouslyFulfilledRequirement) {
+    }
 
     @Override
     public void connectToResourceManager(ResourceManagerGateway resourceManagerGateway) {
@@ -291,15 +301,18 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
 
         resourceRequirementServiceConnectionManager.connect(
                 resourceRequirements ->
+                        // 向 ResourceManager 声明请求资源
                         resourceManagerGateway.declareRequiredResources(
                                 jobMasterId, resourceRequirements, rpcTimeout));
 
+        // 创建资源请求
         declareResourceRequirements(declarativeSlotPool.getResourceRequirements());
     }
 
     private void declareResourceRequirements(Collection<ResourceRequirement> resourceRequirements) {
         assertHasBeenStarted();
 
+        // 向 ResourceManager 请求资源
         resourceRequirementServiceConnectionManager.declareResourceRequirements(
                 ResourceRequirements.create(jobId, jobManagerAddress, resourceRequirements));
     }

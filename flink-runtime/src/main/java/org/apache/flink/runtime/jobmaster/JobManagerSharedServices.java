@@ -75,6 +75,7 @@ public class JobManagerSharedServices {
         this.futureExecutor = checkNotNull(futureExecutor);
         this.ioExecutor = checkNotNull(ioExecutor);
         this.libraryCacheManager = checkNotNull(libraryCacheManager);
+        // NettyShuffleMaster
         this.shuffleMaster = checkNotNull(shuffleMaster);
         this.blobWriter = blobWriter;
     }
@@ -179,11 +180,14 @@ public class JobManagerSharedServices {
 
         final ShuffleMasterContext shuffleMasterContext =
                 new ShuffleMasterContextImpl(config, fatalErrorHandler);
+        // 创建 NettyShuffleMaster
         final ShuffleMaster<?> shuffleMaster =
                 ShuffleServiceLoader.loadShuffleServiceFactory(config)
                         .createShuffleMaster(shuffleMasterContext);
+        // 启动 NettyShuffleMaster
         shuffleMaster.start();
 
+        // 创建 JobManagerSharedServices
         return new JobManagerSharedServices(
                 futureExecutor, ioExecutor, libraryCacheManager, shuffleMaster, blobServer);
     }

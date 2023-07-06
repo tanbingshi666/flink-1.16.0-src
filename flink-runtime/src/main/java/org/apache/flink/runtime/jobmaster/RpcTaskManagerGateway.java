@@ -56,6 +56,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 
     @Override
     public CompletableFuture<Acknowledge> submitTask(TaskDeploymentDescriptor tdd, Time timeout) {
+        // TaskExecutor 接收到 JobMaster 的部署请求
         return taskExecutorGateway.submitTask(tdd, jobMasterId, timeout);
     }
 

@@ -100,6 +100,7 @@ public class DefaultExecutionGraphBuilder {
         final String jobName = jobGraph.getName();
         final JobID jobId = jobGraph.getJobID();
 
+        // 创建 Job 信息 JobInformation
         final JobInformation jobInformation =
                 new JobInformation(
                         jobId,
@@ -119,6 +120,7 @@ public class DefaultExecutionGraphBuilder {
         // create a new execution graph, if none exists so far
         final DefaultExecutionGraph executionGraph;
         try {
+            // 创建空的 ExecutionGraph
             executionGraph =
                     new DefaultExecutionGraph(
                             jobInformation,
@@ -158,9 +160,11 @@ public class DefaultExecutionGraphBuilder {
         // file output formats create directories here, input formats create splits
 
         final long initMasterStart = System.nanoTime();
+        // nning initialization on master for job CarTopSpeedWindowingExample (8c3bd59cb48d4a3d05a6d94eba1c7dcf).
         log.info("Running initialization on master for job {} ({}).", jobName, jobId);
 
         for (JobVertex vertex : jobGraph.getVertices()) {
+            // 遍历每个 JobVertex 找到对应的 Task 任务类
             String executableClass = vertex.getInvokableClassName();
             if (executableClass == null || executableClass.isEmpty()) {
                 throw new JobSubmissionException(
@@ -187,11 +191,13 @@ public class DefaultExecutionGraphBuilder {
             }
         }
 
+        // Successfully ran initialization on master in 1 ms
         log.info(
                 "Successfully ran initialization on master in {} ms.",
                 (System.nanoTime() - initMasterStart) / 1_000_000);
 
         // topologically sort the job vertices and attach the graph to the existing one
+        // 根据 JobVertex ID 升序排序
         List<JobVertex> sortedTopology = jobGraph.getVerticesSortedTopologicallyFromSources();
         if (log.isDebugEnabled()) {
             log.debug(
@@ -200,6 +206,8 @@ public class DefaultExecutionGraphBuilder {
                     jobName,
                     jobId);
         }
+
+        // 将 JobGraph 转换为  ExecutionGraph
         executionGraph.attachJobGraph(sortedTopology);
 
         if (log.isDebugEnabled()) {
@@ -212,6 +220,7 @@ public class DefaultExecutionGraphBuilder {
             // dynamic graph does not support checkpointing so we skip it
             log.warn("Skip setting up checkpointing for a job with dynamic graph.");
         } else if (isCheckpointingEnabled(jobGraph)) {
+            // 开启 checkpoint
             JobCheckpointingSettings snapshotSettings = jobGraph.getCheckpointingSettings();
 
             // load the state backend from the application settings
@@ -233,6 +242,7 @@ public class DefaultExecutionGraphBuilder {
 
             final StateBackend rootBackend;
             try {
+                // 获取 checkpoint 的状态后端
                 rootBackend =
                         StateBackendLoader.fromApplicationOrConfigOrDefault(
                                 applicationConfiguredBackend,
@@ -266,6 +276,7 @@ public class DefaultExecutionGraphBuilder {
 
             final CheckpointStorage rootStorage;
             try {
+                // 获取 checkpoint 存储
                 rootStorage =
                         CheckpointStorageLoader.load(
                                 applicationConfiguredStorage,
@@ -310,10 +321,12 @@ public class DefaultExecutionGraphBuilder {
                 }
             }
 
+
             final CheckpointCoordinatorConfiguration chkConfig =
                     snapshotSettings.getCheckpointCoordinatorConfiguration();
             String changelogStorage = jobManagerConfig.getString(STATE_CHANGE_LOG_STORAGE);
 
+            // ExecutionGraph 开启 checkpoint 配置
             executionGraph.enableCheckpointing(
                     chkConfig,
                     hooks,
@@ -336,5 +349,6 @@ public class DefaultExecutionGraphBuilder {
     // ------------------------------------------------------------------------
 
     /** This class is not supposed to be instantiated. */
-    private DefaultExecutionGraphBuilder() {}
+    private DefaultExecutionGraphBuilder() {
+    }
 }

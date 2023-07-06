@@ -49,7 +49,11 @@ public class DefaultResourceTracker implements ResourceTracker {
                 "Received notification for job {} having new resource requirements {}.",
                 jobId,
                 resourceRequirements);
-        getOrCreateTracker(jobId).notifyResourceRequirements(resourceRequirements);
+
+        // 创建 JobScopedResourceTracker
+        getOrCreateTracker(jobId)
+                // 通知资源请求
+                .notifyResourceRequirements(resourceRequirements);
 
         if (resourceRequirements.isEmpty()) {
             checkWhetherTrackerCanBeRemoved(jobId, trackers.get(jobId));

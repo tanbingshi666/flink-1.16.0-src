@@ -77,6 +77,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
             final BlocklistOperations blocklistOperations)
             throws Exception {
 
+        // 创建 SlotPool
         final SlotPool slotPool =
                 slotPoolService
                         .castInto(SlotPool.class)
@@ -85,6 +86,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                                         new IllegalStateException(
                                                 "The DefaultScheduler requires a SlotPool."));
 
+        // 创建调度器组件 DefaultSchedulerComponents
         final DefaultSchedulerComponents schedulerComponents =
                 createSchedulerComponents(
                         jobGraph.getJobType(),
@@ -92,6 +94,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                         jobMasterConfiguration,
                         slotPool,
                         slotRequestTimeout);
+        // 重启策略
         final RestartBackoffTimeStrategy restartBackoffTimeStrategy =
                 RestartBackoffTimeStrategyFactoryLoader.createRestartBackoffTimeStrategyFactory(
                                 jobGraph.getSerializedExecutionConfig()
@@ -100,12 +103,14 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                                 jobMasterConfiguration,
                                 jobGraph.isCheckpointingEnabled())
                         .create();
+        //  Using restart back off time strategy NoRestartBackoffTimeStrategy for CarTopSpeedWindowingExample (f773c4d120ead2c3675818c838f45d28).
         log.info(
                 "Using restart back off time strategy {} for {} ({}).",
                 restartBackoffTimeStrategy,
                 jobGraph.getName(),
                 jobGraph.getJobID());
 
+        // 创建 DefaultExecutionGraphFactory
         final ExecutionGraphFactory executionGraphFactory =
                 new DefaultExecutionGraphFactory(
                         jobMasterConfiguration,
@@ -119,6 +124,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                         shuffleMaster,
                         partitionTracker);
 
+        // 创建 DefaultScheduler
         return new DefaultScheduler(
                 log,
                 jobGraph,

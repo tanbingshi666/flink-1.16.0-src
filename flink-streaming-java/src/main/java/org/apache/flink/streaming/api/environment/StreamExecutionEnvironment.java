@@ -2285,12 +2285,10 @@ public class StreamExecutionEnvironment implements AutoCloseable {
     public JobClient executeAsync(StreamGraph streamGraph) throws Exception {
         checkNotNull(streamGraph, "StreamGraph cannot be null.");
         // 获取程序任务执行器
-        // bin/flink run-application -t yarn-application ./examples/streaming/TopSpeedWindowing.jar
-        // 如果提交任务到 Yarn 返回 YarnJobClusterExecutor
+        // 如果提交任务到 Yarn 返回 EmbeddedExecutor
         final PipelineExecutor executor = getPipelineExecutor();
 
-        // 提交任务到 Yarn
-        // 调用 YarnJobClusterExecutor 的 AbstractJobClusterExecutor 父类 execute()
+        // 调用 EmbeddedExecutor 的 execute()
         CompletableFuture<JobClient> jobClientFuture =
                 executor.execute(streamGraph, configuration, userClassloader);
 
@@ -2836,6 +2834,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
                 "No execution.target specified in your configuration file.");
 
         // 如果程序任务提交到 Yarn 返回 YarnJobClusterExecutorFactory
+        // 调用 EmbeddedExecutorServiceLoader.getExecutorFactory() 创建 EmbeddedExecutorFactory
         final PipelineExecutorFactory executorFactory =
                 executorServiceLoader.getExecutorFactory(configuration);
 
@@ -2844,7 +2843,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
                 "Cannot find compatible factory for specified execution.target (=%s)",
                 configuration.get(DeploymentOptions.TARGET));
 
-        // 获取执行器
+        // 获取执行器 EmbeddedExecutor
         // YarnJobClusterExecutorFactory -> YarnJobClusterExecutor
         return executorFactory.getExecutor(configuration);
     }

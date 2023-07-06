@@ -96,11 +96,13 @@ public class TaskExecutorToResourceManagerConnection
 
     @Override
     protected void onRegistrationSuccess(TaskExecutorRegistrationSuccess success) {
+        // Successful registration at resource manager akka.tcp://flink@node1:41808/user/rpc/resourcemanager_* under registration id a90e2baaf7714358a3480cf7a1faedbf.
         log.info(
                 "Successful registration at resource manager {} under registration id {}.",
                 getTargetAddress(),
                 success.getRegistrationId());
 
+        // TaskExecutor 注册成功后 执行 slot 上报
         registrationListener.onRegistrationSuccess(this, success);
     }
 
@@ -156,6 +158,7 @@ public class TaskExecutorToResourceManagerConnection
                 throws Exception {
 
             Time timeout = Time.milliseconds(timeoutMillis);
+            // TaskExecutor 向 ResourceManager 注册
             return resourceManager.registerTaskExecutor(taskExecutorRegistration, timeout);
         }
     }

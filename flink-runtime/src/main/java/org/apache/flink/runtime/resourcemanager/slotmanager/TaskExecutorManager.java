@@ -208,7 +208,7 @@ class TaskExecutorManager implements AutoCloseable {
             for (PendingTaskManagerSlot pendingTaskManagerSlot : pendingSlots.values()) {
                 if (!matchingPendingSlots.contains(pendingTaskManagerSlot.getTaskManagerSlotId())
                         && isPendingSlotExactlyMatchingResourceProfile(
-                                pendingTaskManagerSlot, slotStatus.getResourceProfile())) {
+                        pendingTaskManagerSlot, slotStatus.getResourceProfile())) {
                     matchingPendingSlots.add(pendingTaskManagerSlot.getTaskManagerSlotId());
                     break; // pendingTaskManagerSlot loop
                 }
@@ -249,8 +249,9 @@ class TaskExecutorManager implements AutoCloseable {
      * Tries to allocate a worker that can provide a slot with the given resource profile.
      *
      * @param requestedSlotResourceProfile desired slot profile
+     *
      * @return an upper bound resource requirement that can be fulfilled by the new worker, if one
-     *     was allocated
+     *         was allocated
      */
     public Optional<ResourceRequirement> allocateWorker(
             ResourceProfile requestedSlotResourceProfile) {
@@ -270,7 +271,11 @@ class TaskExecutorManager implements AutoCloseable {
             return Optional.empty();
         }
 
-        if (!resourceActions.allocateResource(defaultWorkerResourceSpec)) {
+        // 申请 Worker 也即向 Yarn 申请 Worker
+        if (!resourceActions.allocateResource(
+                // TM 内存
+                defaultWorkerResourceSpec
+        )) {
             // resource cannot be allocated
             return Optional.empty();
         }
@@ -356,6 +361,7 @@ class TaskExecutorManager implements AutoCloseable {
      * Allocate a number of workers based on the input param.
      *
      * @param workerNum the number of workers to allocate
+     *
      * @return the number of successfully allocated workers
      */
     private int allocateWorkers(int workerNum) {

@@ -61,14 +61,17 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
 
         checkArgument(jobGraph.getNumberOfVertices() > 0, "The given job is empty");
 
+        // 从配置获取 JobMaster 配置
         final JobMasterConfiguration jobMasterConfiguration =
                 JobMasterConfiguration.fromConfiguration(configuration);
 
         final JobResultStore jobResultStore = highAvailabilityServices.getJobResultStore();
 
+        // 获取 JobMaster Leader 选举服务 StandaloneLeaderElectionService
         final LeaderElectionService jobManagerLeaderElectionService =
                 highAvailabilityServices.getJobManagerLeaderElectionService(jobGraph.getJobID());
 
+        // 创建 SlotPool 调度工厂 DefaultSlotPoolServiceSchedulerFactory
         final SlotPoolServiceSchedulerFactory slotPoolServiceSchedulerFactory =
                 DefaultSlotPoolServiceSchedulerFactory.fromConfiguration(
                         configuration, jobGraph.getJobType());
@@ -92,6 +95,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                                 jobGraph.getUserJarBlobKeys(), jobGraph.getClasspaths())
                         .asClassLoader();
 
+        // 创建 JobMaster 服务工厂 DefaultJobMasterServiceFactory
         final DefaultJobMasterServiceFactory jobMasterServiceFactory =
                 new DefaultJobMasterServiceFactory(
                         jobManagerServices.getIoExecutor(),
@@ -107,6 +111,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                         userCodeClassLoader,
                         initializationTimestamp);
 
+        // 创建 DefaultJobMasterServiceProcessFactory
         final DefaultJobMasterServiceProcessFactory jobMasterServiceProcessFactory =
                 new DefaultJobMasterServiceProcessFactory(
                         jobGraph.getJobID(),
@@ -115,6 +120,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                         initializationTimestamp,
                         jobMasterServiceFactory);
 
+        // 创建 JobMasterServiceLeadershipRunner
         return new JobMasterServiceLeadershipRunner(
                 jobMasterServiceProcessFactory,
                 jobManagerLeaderElectionService,

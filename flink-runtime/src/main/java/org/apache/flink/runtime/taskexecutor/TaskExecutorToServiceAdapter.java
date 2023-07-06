@@ -48,6 +48,7 @@ public class TaskExecutorToServiceAdapter implements TaskManagerRunner.TaskExecu
     }
 
     public static TaskExecutorToServiceAdapter createFor(TaskExecutor taskExecutor) {
+        // 创建 TaskExecutorToServiceAdapter 封装 TaskExecutor
         return new TaskExecutorToServiceAdapter(taskExecutor);
     }
 }

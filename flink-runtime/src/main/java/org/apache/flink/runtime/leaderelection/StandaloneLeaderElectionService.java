@@ -46,12 +46,14 @@ public class StandaloneLeaderElectionService implements LeaderElectionService {
         // 如果是 RestEndpoint  newContender -> WebMonitorEndpoint
         // 如果是 Dispatcher    newContender -> DefaultDispatcherRunner
         // 如果是 ResourceManager newContender -> ResourceManagerServiceImpl
+        // 如果是 JobMaster newContender -> JobMasterServiceLeadershipRunner
         contender = Preconditions.checkNotNull(newContender);
 
         // directly grant leadership to the given contender
         // 如果是 RestEndpoint 调用 WebMonitorEndpoint.grantLeadership() 啥也不干
         // 如果是 Dispatcher 调用 DefaultDispatcherRunner.grantLeadership() 基本啥也不干
         // 如果是 ResourceManager 调用 ResourceManagerServiceImpl.grantLeadership()
+        // 如果是 JobMaster 调用 JobMasterServiceLeadershipRunner.grantLeadership()
         contender.grantLeadership(HighAvailabilityServices.DEFAULT_LEADER_ID);
     }
 

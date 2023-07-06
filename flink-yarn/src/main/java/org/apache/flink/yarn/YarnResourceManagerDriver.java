@@ -284,6 +284,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         } else {
             final Priority priority = priorityAndResourceOpt.get().getPriority();
             final Resource resource = priorityAndResourceOpt.get().getResource();
+            // 添加容器请求
             addContainerRequest(resource, priority);
 
             // make sure we transmit the request fast and receive fast news of granted allocations
@@ -293,6 +294,17 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
                     .computeIfAbsent(taskExecutorProcessSpec, ignore -> new LinkedList<>())
                     .add(requestResourceFuture);
 
+            //  Requesting new TaskExecutor container with resource
+            //  TaskExecutorProcessSpec {cpuCores=2.0,
+            //  frameworkHeapSize=128.000mb (134217728 bytes),
+            //  frameworkOffHeapSize=128.000mb (134217728 bytes),
+            //  taskHeapSize=384.000mb (402653174 bytes),
+            //  taskOffHeapSize=0 bytes,
+            //  networkMemSize=128.000mb (134217730 bytes),
+            //  managedMemorySize=512.000mb (536870920 bytes),
+            //  jvmMetaspaceSize=256.000mb (268435456 bytes),
+            //  jvmOverheadSize=192.000mb (201326592 bytes),
+            //  numSlots=2}, priority 1.
             log.info(
                     "Requesting new TaskExecutor container with resource {}, priority {}.",
                     taskExecutorProcessSpec,
@@ -354,6 +366,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         final Queue<CompletableFuture<YarnWorkerNode>> pendingRequestResourceFutures =
                 requestResourceFutures.getOrDefault(taskExecutorProcessSpec, new LinkedList<>());
 
+        // Received 1 containers with priority 1, 1 pending container requests.
         log.info(
                 "Received {} containers with priority {}, {} pending container requests.",
                 containers.size(),
@@ -361,12 +374,14 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
                 pendingRequestResourceFutures.size());
 
         final Iterator<Container> containerIterator = containers.iterator();
+        // 获取之前申请请求
         final Iterator<AMRMClient.ContainerRequest> pendingContainerRequestIterator =
                 getPendingRequestsAndCheckConsistency(
                         priority, resource, pendingRequestResourceFutures.size())
                         .iterator();
 
         int numAccepted = 0;
+        // 遍历申请到的容器
         while (containerIterator.hasNext() && pendingContainerRequestIterator.hasNext()) {
             final Container container = containerIterator.next();
             final AMRMClient.ContainerRequest pendingRequest =
@@ -381,6 +396,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
                 requestResourceFutures.remove(taskExecutorProcessSpec);
             }
 
+            // 异步启动容器
             startTaskExecutorInContainerAsync(
                     container, taskExecutorProcessSpec, resourceId, requestResourceFuture);
             removeContainerRequest(pendingRequest);
@@ -394,6 +410,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
             numExcess++;
         }
 
+        // Accepted 1 requested containers, returned 0 excess containers, 0 pending container requests of resource <memory:1728, vCores:2>.
         log.info(
                 "Accepted {} requested containers, returned {} excess containers, {} pending container requests of resource {}.",
                 numAccepted,
@@ -433,8 +450,11 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         final CompletableFuture<ContainerLaunchContext> containerLaunchContextFuture =
                 FutureUtils.supplyAsync(
                         () ->
+                                // 创建容器上下文
+                                // YarnTaskExecutorRunner
                                 createTaskExecutorLaunchContext(
                                         resourceId,
+                                        // NM 地址
                                         container.getNodeId().getHost(),
                                         taskExecutorProcessSpec),
                         getIoExecutor());
@@ -443,6 +463,8 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
                 containerLaunchContextFuture.handleAsync(
                         (context, exception) -> {
                             if (exception == null) {
+                                // 启动容器
+                                // 发送一个 RPC 请求给 NM 启动 YarnTaskExecutorRunner JVM 进程
                                 nodeManagerClient.startContainerAsync(container, context);
                                 requestResourceFuture.complete(
                                         new YarnWorkerNode(container, resourceId));
@@ -483,6 +505,17 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
         final ContaineredTaskManagerParameters taskManagerParameters =
                 ContaineredTaskManagerParameters.create(flinkConfig, taskExecutorProcessSpec);
 
+        //  TaskExecutor container_1688453821841_0002_01_000002(node2:38881) will be started on node2 with
+        //  TaskExecutorProcessSpec {cpuCores=2.0,
+        //  frameworkHeapSize=128.000mb (134217728 bytes),
+        //  frameworkOffHeapSize=128.000mb (134217728 bytes),
+        //  taskHeapSize=384.000mb (402653174 bytes),
+        //  taskOffHeapSize=0 bytes,
+        //  networkMemSize=128.000mb (134217730 bytes),
+        //  managedMemorySize=512.000mb (536870920 bytes),
+        //  jvmMetaspaceSize=256.000mb (268435456 bytes),
+        //  jvmOverheadSize=192.000mb (201326592 bytes),
+        //  numSlots=2}.
         log.info(
                 "TaskExecutor {} will be started on {} with {}.",
                 containerId.getStringWithMetadata(),
@@ -501,6 +534,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
         log.debug("TaskManager configuration: {}", taskManagerConfig);
 
+        // 创建容器启动上下文
         final ContainerLaunchContext taskExecutorLaunchContext =
                 Utils.createTaskExecutorContext(
                         flinkConfig,
@@ -509,6 +543,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
                         taskManagerParameters,
                         taskManagerDynamicProperties,
                         currDir,
+                        // 启动类
                         YarnTaskExecutorRunner.class,
                         log);
 
@@ -632,10 +667,12 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
             runAsyncWithFatalHandler(
                     () -> {
                         checkInitialized();
+                        // Received 1 containers.
                         log.info("Received {} containers.", containers.size());
 
                         for (Map.Entry<Priority, List<Container>> entry :
                                 groupContainerByPriority(containers).entrySet()) {
+                            // 申请到容器 启动 YarnTaskExecutorRunner
                             onContainersOfPriorityAllocated(entry.getKey(), entry.getValue());
                         }
 

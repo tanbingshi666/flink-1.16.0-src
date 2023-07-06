@@ -152,6 +152,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                     }
                 };
 
+        // 构建 ExecutionGraph
         final ExecutionGraph newExecutionGraph =
                 DefaultExecutionGraphBuilder.buildGraph(
                         jobGraph,
@@ -177,6 +178,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                         isDynamicGraph,
                         executionJobVertexFactory);
 
+        // checkpoint 协调器 CheckpointCoordinator
         final CheckpointCoordinator checkpointCoordinator =
                 newExecutionGraph.getCheckpointCoordinator();
 

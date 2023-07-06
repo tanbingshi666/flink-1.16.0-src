@@ -64,6 +64,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                 slotRequestId,
                 resourceProfile);
 
+        // 尝试从 SlotPool 申请 Slot
         Optional<PhysicalSlot> availablePhysicalSlot =
                 tryAllocateFromAvailable(slotRequestId, slotProfile);
 
@@ -73,6 +74,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                         .map(CompletableFuture::completedFuture)
                         .orElseGet(
                                 () ->
+                                        // SlotPool 可用 Slot 则发送 Slot 请求给
                                         requestNewSlot(
                                                 slotRequestId,
                                                 resourceProfile,
@@ -107,7 +109,10 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
             ResourceProfile resourceProfile,
             Collection<AllocationID> preferredAllocations,
             boolean willSlotBeOccupiedIndefinitely) {
+        // 如果是 STREAM 则为 true
         if (willSlotBeOccupiedIndefinitely) {
+            // SlotPool 申请 Slot
+            // 调用 DeclarativeSlotPoolBridge.requestNewAllocatedSlot()
             return slotPool.requestNewAllocatedSlot(
                     slotRequestId, resourceProfile, preferredAllocations, null);
         } else {

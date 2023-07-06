@@ -67,6 +67,8 @@ class JobScopedResourceTracker {
                             newResourceRequirement.getResourceProfile(),
                             newResourceRequirement.getNumberOfRequiredSlots());
         }
+        // 找到可用的资源 slot 然后分配
+        // 目前还没有向 yarn 申请 slot 故没有 slot 可用
         findExcessSlots();
         tryAssigningExcessSlots();
     }

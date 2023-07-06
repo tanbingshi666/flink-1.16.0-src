@@ -202,6 +202,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
 
     @Override
     public boolean startNewWorker(WorkerResourceSpec workerResourceSpec) {
+        // 申请 Worker
         requestNewWorker(workerResourceSpec);
         return true;
     }
@@ -307,6 +308,12 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
                         flinkConfig, workerResourceSpec);
         final int pendingCount = pendingWorkerCounter.increaseAndGet(workerResourceSpec);
 
+        // Requesting new worker with resource spec WorkerResourceSpec
+        // {cpuCores=2.0,
+        // taskHeapSize=384.000mb (402653174 bytes),
+        // taskOffHeapSize=0 bytes, networkMemSize=128.000mb (134217730 bytes),
+        // managedMemSize=512.000mb (536870920 bytes), numSlots=2},
+        // current pending count: 1.
         log.info(
                 "Requesting new worker with resource spec {}, current pending count: {}.",
                 workerResourceSpec,
@@ -318,6 +325,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
         // which keeps the main thread busy.
         final CompletableFuture<WorkerType> requestResourceFuture =
                 startWorkerCoolDown.thenCompose(
+                        // 向 Yarn 的 ResourceManager 申请资源 启动 Worker
                         (ignore) -> resourceManagerDriver.requestResource(taskExecutorProcessSpec));
         FutureUtils.assertNoException(
                 requestResourceFuture.handle(
@@ -333,11 +341,20 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
                                 recordWorkerFailureAndPauseWorkerCreationIfNeeded();
                                 requestWorkerIfRequired();
                             } else {
+                                // 向 ResourceManager 申请资源 ok
                                 final ResourceID resourceId = worker.getResourceID();
                                 workerNodeMap.put(resourceId, worker);
                                 currentAttemptUnregisteredWorkers.put(
                                         resourceId, workerResourceSpec);
                                 scheduleWorkerRegistrationTimeoutCheck(resourceId);
+                                //  Requested worker container_1688453821841_0002_01_000002(node2:38881)
+                                //  with resource spec WorkerResourceSpec
+                                //  {cpuCores=2.0,
+                                //  taskHeapSize=384.000mb (402653174 bytes),
+                                //  taskOffHeapSize=0 bytes,
+                                //  networkMemSize=128.000mb (134217730 bytes),
+                                //  managedMemSize=512.000mb (536870920 bytes),
+                                //  numSlots=2}.
                                 log.info(
                                         "Requested worker {} with resource spec {}.",
                                         resourceId.getStringWithMetadata(),

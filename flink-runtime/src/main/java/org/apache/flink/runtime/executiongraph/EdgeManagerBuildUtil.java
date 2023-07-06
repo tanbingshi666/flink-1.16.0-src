@@ -39,17 +39,20 @@ public class EdgeManagerBuildUtil {
      * @param vertex the downstream consumer {@link ExecutionJobVertex}
      * @param intermediateResult the upstream consumed {@link IntermediateResult}
      * @param distributionPattern the {@link DistributionPattern} of the edge that connects the
-     *     upstream {@link IntermediateResult} and the downstream {@link IntermediateResult}
+     *         upstream {@link IntermediateResult} and the downstream {@link IntermediateResult}
      */
     static void connectVertexToResult(
             ExecutionJobVertex vertex,
             IntermediateResult intermediateResult,
             DistributionPattern distributionPattern) {
 
+        // ExecutionJobVertex 连接两种模式
         switch (distributionPattern) {
+            // forward
             case POINTWISE:
                 connectPointwise(vertex.getTaskVertices(), intermediateResult);
                 break;
+            // redistribute
             case ALL_TO_ALL:
                 connectAllToAll(vertex.getTaskVertices(), intermediateResult);
                 break;
@@ -113,13 +116,18 @@ public class EdgeManagerBuildUtil {
 
         if (sourceCount == targetCount) {
             for (int i = 0; i < sourceCount; i++) {
+                // 获取下游 ExecutionVertex
                 ExecutionVertex executionVertex = taskVertices[i];
+                // 获取下游 IntermediateResultPartition
                 IntermediateResultPartition partition = intermediateResult.getPartitions()[i];
 
+                // 创建 ConsumerVertexGroup
                 ConsumerVertexGroup consumerVertexGroup =
                         ConsumerVertexGroup.fromSingleVertex(executionVertex.getID());
+                // IntermediateResultPartition 添加 ConsumerVertexGroup
                 partition.addConsumers(consumerVertexGroup);
 
+                // 创建 ConsumedPartitionGroup
                 ConsumedPartitionGroup consumedPartitionGroup =
                         createAndRegisterConsumedPartitionGroupToEdgeManager(
                                 consumerVertexGroup.size(),

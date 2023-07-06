@@ -180,10 +180,12 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 
     @Override
     public void startScheduling() {
+        // 获取全部调度 region
         final Set<SchedulingPipelinedRegion> sourceRegions =
                 IterableUtils.toStream(schedulingTopology.getAllPipelinedRegions())
                         .filter(this::isSourceRegion)
                         .collect(Collectors.toSet());
+        // 调度执行 region
         maybeScheduleRegions(sourceRegions);
     }
 
@@ -219,17 +221,21 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
     }
 
     @Override
-    public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {}
+    public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {
+    }
 
     private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
         Set<SchedulingPipelinedRegion> nextRegions = regions;
+
+        // 遍历可调度的 region 存放到 Set 集合
         while (!nextRegions.isEmpty()) {
             nextRegions = addSchedulableAndGetNextRegions(nextRegions, regionsToSchedule);
         }
         // schedule regions in topological order.
         SchedulingStrategyUtils.sortPipelinedRegionsInTopologicalOrder(
                         schedulingTopology, regionsToSchedule)
+                // 调度 region
                 .forEach(this::scheduleRegion);
     }
 
@@ -284,6 +290,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 areRegionVerticesAllInCreatedState(region),
                 "BUG: trying to schedule a region which is not in CREATED state");
         scheduledRegions.add(region);
+        // 申请 slot并开始部署 region
         schedulerOperations.allocateSlotsAndDeploy(regionVerticesSorted.get(region));
     }
 
@@ -351,7 +358,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
             for (IntermediateResultPartitionID partitionId : consumedPartitionGroup) {
                 if (isExternalConsumedPartition(partitionId, pipelinedRegion)
                         && schedulingTopology.getResultPartition(partitionId).getState()
-                                != ResultPartitionState.CONSUMABLE) {
+                        != ResultPartitionState.CONSUMABLE) {
                     return false;
                 }
             }

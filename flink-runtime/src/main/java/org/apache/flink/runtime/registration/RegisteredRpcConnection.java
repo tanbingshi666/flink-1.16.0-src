@@ -53,10 +53,10 @@ public abstract class RegisteredRpcConnection<
 
     private static final AtomicReferenceFieldUpdater<RegisteredRpcConnection, RetryingRegistration>
             REGISTRATION_UPDATER =
-                    AtomicReferenceFieldUpdater.newUpdater(
-                            RegisteredRpcConnection.class,
-                            RetryingRegistration.class,
-                            "pendingRegistration");
+            AtomicReferenceFieldUpdater.newUpdater(
+                    RegisteredRpcConnection.class,
+                    RetryingRegistration.class,
+                    "pendingRegistration");
 
     /** The logger for all log messages of this class. */
     protected final Logger log;
@@ -102,9 +102,16 @@ public abstract class RegisteredRpcConnection<
                 !isConnected() && pendingRegistration == null,
                 "The RPC connection is already started");
 
+        // JobMaster 连接 ResourceManager 并注册信息 创建注册信息
         final RetryingRegistration<F, G, S, R> newRegistration = createNewRegistration();
 
         if (REGISTRATION_UPDATER.compareAndSet(this, null, newRegistration)) {
+            // JobMaster 向 ResourceManager 注册
+            // 1 先连接 ResourceManager
+            // 2 再向 ResourceManager 注册
+            // 最终调用 JobMaster.generateRegistration() 里面的 invokeRegistration()
+            // 向 ResourceManager 发送注册请求
+            // ResourceManager 的 registerJobMaster() 接收注册请求
             newRegistration.startRegistration();
         } else {
             // concurrent start operation
@@ -117,7 +124,7 @@ public abstract class RegisteredRpcConnection<
      * starting a new pending registration.
      *
      * @return {@code false} if the connection has been closed or a concurrent modification has
-     *     happened; otherwise {@code true}
+     *         happened; otherwise {@code true}
      */
     public boolean tryReconnect() {
         checkState(isConnected(), "Cannot reconnect to an unknown destination.");
@@ -240,13 +247,16 @@ public abstract class RegisteredRpcConnection<
     // ------------------------------------------------------------------------
 
     private RetryingRegistration<F, G, S, R> createNewRegistration() {
+        // 创建 JobMaster 向 ResourceManager 注册信息
         RetryingRegistration<F, G, S, R> newRegistration = checkNotNull(generateRegistration());
 
         CompletableFuture<RetryingRegistration.RetryingRegistrationResult<G, S, R>> future =
                 newRegistration.getFuture();
 
+        // JobMaster 项目 ResourceManager 注册成功后回调
         future.whenCompleteAsync(
-                (RetryingRegistration.RetryingRegistrationResult<G, S, R> result,
+                (
+                        RetryingRegistration.RetryingRegistrationResult<G, S, R> result,
                         Throwable failure) -> {
                     if (failure != null) {
                         if (failure instanceof CancellationException) {
@@ -262,6 +272,7 @@ public abstract class RegisteredRpcConnection<
                             onRegistrationFailure(failure);
                         }
                     } else {
+                        // JobMaster 向 ResourceManager 注册成功后回调
                         if (result.isSuccess()) {
                             targetGateway = result.getGateway();
                             onRegistrationSuccess(result.getSuccess());

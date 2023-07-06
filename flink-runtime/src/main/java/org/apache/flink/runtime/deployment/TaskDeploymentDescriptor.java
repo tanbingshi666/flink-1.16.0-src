@@ -274,6 +274,7 @@ public final class TaskDeploymentDescriptor implements Serializable {
         }
 
         for (InputGateDeploymentDescriptor inputGate : inputGates) {
+            //
             inputGate.loadBigData(blobService, jobId);
         }
 

@@ -51,7 +51,7 @@ public class SimpleExecutionSlotAllocator implements ExecutionSlotAllocator {
     private final Function<ExecutionAttemptID, ResourceProfile> resourceProfileRetriever;
 
     private final DualKeyLinkedMap<
-                    ExecutionAttemptID, SlotRequestId, CompletableFuture<LogicalSlot>>
+            ExecutionAttemptID, SlotRequestId, CompletableFuture<LogicalSlot>>
             requestedPhysicalSlots;
 
     SimpleExecutionSlotAllocator(
@@ -68,7 +68,11 @@ public class SimpleExecutionSlotAllocator implements ExecutionSlotAllocator {
     public List<ExecutionSlotAssignment> allocateSlotsFor(
             List<ExecutionAttemptID> executionAttemptIds) {
         return executionAttemptIds.stream()
-                .map(id -> new ExecutionSlotAssignment(id, allocateSlotFor(id)))
+                .map(id -> new ExecutionSlotAssignment(
+                        id,
+                        // 申请 slot
+                        allocateSlotFor(id)
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -85,12 +89,16 @@ public class SimpleExecutionSlotAllocator implements ExecutionSlotAllocator {
                         Collections.emptyList(),
                         Collections.emptyList(),
                         Collections.emptySet());
+        // 创建 slot 请求
         final PhysicalSlotRequest request =
                 new PhysicalSlotRequest(slotRequestId, slotProfile, slotWillBeOccupiedIndefinitely);
         final CompletableFuture<LogicalSlot> slotFuture =
+                // 调用 PhysicalSlotProviderImpl.allocatePhysicalSlot()
                 slotProvider
+                        // 申请 slot 请求
                         .allocatePhysicalSlot(request)
                         .thenApply(
+                                // slot 申请完成进行 slot 分配
                                 physicalSlotRequest ->
                                         allocateLogicalSlotFromPhysicalSlot(
                                                 slotRequestId,

@@ -80,6 +80,7 @@ public class DefaultSchedulerComponents {
         checkArgument(
                 !isApproximateLocalRecoveryEnabled,
                 "Approximate local recovery can not be used together with PipelinedRegionScheduler for now! ");
+        // 创建调度器组件
         return createPipelinedRegionSchedulerComponents(
                 jobType, jobMasterConfiguration, slotPool, slotRequestTimeout);
     }
@@ -104,6 +105,7 @@ public class DefaultSchedulerComponents {
                         jobType == JobType.STREAMING,
                         bulkChecker,
                         slotRequestTimeout);
+        // 创建 DefaultSchedulerComponents
         return new DefaultSchedulerComponents(
                 new PipelinedRegionSchedulingStrategy.Factory(),
                 bulkChecker::start,

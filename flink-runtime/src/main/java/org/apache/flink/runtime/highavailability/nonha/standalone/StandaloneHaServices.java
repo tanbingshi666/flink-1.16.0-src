@@ -76,6 +76,7 @@ public class StandaloneHaServices extends AbstractNonHaServices {
         synchronized (lock) {
             checkNotShutdown();
 
+            // 创建 StandaloneLeaderRetrievalService
             return new StandaloneLeaderRetrievalService(resourceManagerAddress, DEFAULT_LEADER_ID);
         }
     }

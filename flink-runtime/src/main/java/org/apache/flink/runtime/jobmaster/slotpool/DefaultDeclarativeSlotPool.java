@@ -112,6 +112,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             Time rpcTimeout) {
 
         this.jobId = jobId;
+        // DefaultAllocatedSlotPool
         this.slotPool = slotPool;
         this.notifyNewResourceRequirements = notifyNewResourceRequirements;
         this.idleSlotTimeout = idleSlotTimeout;
@@ -128,6 +129,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         }
         totalResourceRequirements = totalResourceRequirements.add(increment);
 
+        // 申请 slot
         declareResourceRequirements();
     }
 
@@ -158,6 +160,8 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 resourceRequirements,
                 System.lineSeparator(),
                 fulfilledResourceRequirements);
+
+        // 回调 DeclarativeSlotPoolService.declareResourceRequirements()
         notifyNewResourceRequirements.accept(resourceRequirements);
     }
 
@@ -184,6 +188,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
         log.debug("Received {} slot offers from TaskExecutor {}.", offers, taskManagerLocation);
 
+        // 接收到 slot
         return internalOfferSlots(
                 offers,
                 taskManagerLocation,
@@ -226,6 +231,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             log.debug(
                     "Acquired new resources; new total acquired resources: {}",
                     fulfilledResourceRequirements);
+            // 告知 JobMaster 有 slot了
             newSlotsListener.notifyNewSlotsAreAvailable(acceptedSlots);
         }
 

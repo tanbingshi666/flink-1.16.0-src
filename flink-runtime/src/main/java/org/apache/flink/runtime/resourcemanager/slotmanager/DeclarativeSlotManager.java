@@ -71,7 +71,8 @@ public class DeclarativeSlotManager implements SlotManager {
     private final ResourceTracker resourceTracker;
     private final BiFunction<Executor, ResourceActions, TaskExecutorManager>
             taskExecutorManagerFactory;
-    @Nullable private TaskExecutorManager taskExecutorManager;
+    @Nullable
+    private TaskExecutorManager taskExecutorManager;
 
     /** Timeout for slot requests to the task manager. */
     private final Time taskManagerRequestTimeout;
@@ -92,19 +93,24 @@ public class DeclarativeSlotManager implements SlotManager {
     private final ScheduledExecutor scheduledExecutor;
 
     /** ResourceManager's id. */
-    @Nullable private ResourceManagerId resourceManagerId;
+    @Nullable
+    private ResourceManagerId resourceManagerId;
 
     /** Executor for future callbacks which have to be "synchronized". */
-    @Nullable private Executor mainThreadExecutor;
+    @Nullable
+    private Executor mainThreadExecutor;
 
     /** Callbacks for resource (de-)allocations. */
-    @Nullable private ResourceActions resourceActions;
+    @Nullable
+    private ResourceActions resourceActions;
 
     /** The future of the requirements delay check. */
-    @Nullable private CompletableFuture<Void> requirementsCheckFuture;
+    @Nullable
+    private CompletableFuture<Void> requirementsCheckFuture;
 
     /** Blocked task manager checker. */
-    @Nullable private BlockedTaskManagerChecker blockedTaskManagerChecker;
+    @Nullable
+    private BlockedTaskManagerChecker blockedTaskManagerChecker;
 
     /** True iff the component has been started. */
     private boolean started;
@@ -291,6 +297,8 @@ public class DeclarativeSlotManager implements SlotManager {
         } else if (resourceRequirements.getResourceRequirements().isEmpty()) {
             LOG.info("Clearing resource requirements of job {}", resourceRequirements.getJobId());
         } else {
+            // Received resource requirements from job 8c3bd59cb48d4a3d05a6d94eba1c7dcf:
+            // [ResourceRequirement{resourceProfile=ResourceProfile{UNKNOWN}, numberOfRequiredSlots=1}]
             LOG.info(
                     "Received resource requirements from job {}: {}",
                     resourceRequirements.getJobId(),
@@ -301,8 +309,11 @@ public class DeclarativeSlotManager implements SlotManager {
             jobMasterTargetAddresses.put(
                     resourceRequirements.getJobId(), resourceRequirements.getTargetAddress());
         }
+        // 通知资源请求
         resourceTracker.notifyResourceRequirements(
                 resourceRequirements.getJobId(), resourceRequirements.getResourceRequirements());
+
+        // 检查是否由资源请求(有)
         checkResourceRequirementsWithDelay();
     }
 
@@ -326,8 +337,9 @@ public class DeclarativeSlotManager implements SlotManager {
      * @param initialSlotReport for the new task manager
      * @param totalResourceProfile for the new task manager
      * @param defaultSlotResourceProfile for the new task manager
+     *
      * @return True if the task manager has not been registered before and is registered
-     *     successfully; otherwise false
+     *         successfully; otherwise false
      */
     @Override
     public boolean registerTaskManager(
@@ -369,6 +381,7 @@ public class DeclarativeSlotManager implements SlotManager {
                         slotStatus.getJobID());
             }
 
+            // 检查是否 JobMaster 请求 slot 满足
             checkResourceRequirementsWithDelay();
             return true;
         }
@@ -400,6 +413,7 @@ public class DeclarativeSlotManager implements SlotManager {
      *
      * @param instanceId identifying the task manager for which to report the slot status
      * @param slotReport containing the status for all of its slots
+     *
      * @return true if the slot status has been updated successfully, otherwise false
      */
     @Override
@@ -458,6 +472,8 @@ public class DeclarativeSlotManager implements SlotManager {
                         () ->
                                 mainThreadExecutor.execute(
                                         () -> {
+                                            // 检查资源申请 也即 JobMaster 的 SlotPool 向 ResourceManager 发送 slot 申请后
+                                            // 需要检查是否有资源请求 当然有啦
                                             checkResourceRequirements();
                                             Preconditions.checkNotNull(requirementsCheckFuture)
                                                     .complete(null);
@@ -505,11 +521,14 @@ public class DeclarativeSlotManager implements SlotManager {
         }
 
         final Map<JobID, ResourceCounter> unfulfilledRequirements = new LinkedHashMap<>();
+        // 遍历有哪些资源申请请求
         for (Map.Entry<JobID, Collection<ResourceRequirement>> resourceRequirements :
                 missingResources.entrySet()) {
             final JobID jobId = resourceRequirements.getKey();
 
+            // 尝试从 SlotManager 中获取可用 slot
             final ResourceCounter unfulfilledJobRequirements =
+                    // 如果满足了
                     tryAllocateSlotsForJob(jobId, resourceRequirements.getValue());
             if (!unfulfilledJobRequirements.isEmpty()) {
                 unfulfilledRequirements.put(jobId, unfulfilledJobRequirements);
@@ -530,6 +549,7 @@ public class DeclarativeSlotManager implements SlotManager {
         for (Map.Entry<JobID, ResourceCounter> unfulfilledRequirement :
                 unfulfilledRequirements.entrySet()) {
             pendingSlots =
+                    // 申请 Slot
                     tryFulfillRequirementsWithPendingSlots(
                             unfulfilledRequirement.getKey(),
                             unfulfilledRequirement.getValue().getResourcesWithCount(),
@@ -543,6 +563,7 @@ public class DeclarativeSlotManager implements SlotManager {
 
         for (ResourceRequirement resourceRequirement : missingResources) {
             int numMissingSlots =
+                    // JobMaster 申请的 slot 满足
                     internalTryAllocateSlots(
                             jobId, jobMasterTargetAddresses.get(jobId), resourceRequirement);
             if (numMissingSlots > 0) {
@@ -561,6 +582,7 @@ public class DeclarativeSlotManager implements SlotManager {
      * @param jobId job to allocate slots for
      * @param targetAddress address of the jobmaster
      * @param resourceRequirement required slots
+     *
      * @return the number of missing slots
      */
     private int internalTryAllocateSlots(
@@ -583,6 +605,7 @@ public class DeclarativeSlotManager implements SlotManager {
                             availableSlots.values(),
                             this::getNumberRegisteredSlotsOf);
             if (reservedSlot.isPresent()) {
+                // 到这里说明 JobMaster 申请 slot 成功 (前提是 TaskExecutor 上报 slot)
                 allocateSlot(reservedSlot.get(), jobId, targetAddress, requiredResource);
                 availableSlots.remove(reservedSlot.get().getSlotId());
             } else {
@@ -639,6 +662,7 @@ public class DeclarativeSlotManager implements SlotManager {
 
         // RPC call to the task manager
         CompletableFuture<Acknowledge> requestFuture =
+                // 申请 slot
                 gateway.requestSlot(
                         slotId,
                         jobId,
@@ -714,6 +738,7 @@ public class DeclarativeSlotManager implements SlotManager {
                         tryFulfillWithPendingSlots(profile, pendingSlots);
                 pendingSlots = matchingResult.getNewAvailableResources();
                 if (!matchingResult.isSuccessfulMatching()) {
+                    // 尝试分配 Worker
                     final WorkerAllocationResult allocationResult =
                             tryAllocateWorkerAndReserveSlot(profile, pendingSlots);
                     pendingSlots = allocationResult.getNewAvailableResources();

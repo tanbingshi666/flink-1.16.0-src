@@ -131,6 +131,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
             final ExecutionDeployer.Factory executionDeployerFactory)
             throws Exception {
 
+        // 往下追 将 JobGraph 转换为 ExecutionGraph
         super(
                 log,
                 jobGraph,
@@ -159,6 +160,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         final FailoverStrategy failoverStrategy =
                 failoverStrategyFactory.create(
                         getSchedulingTopology(), getResultPartitionAvailabilityChecker());
+        // Using failover strategy org.apache.flink.runtime.executiongraph.failover.flip1.RestartPipelinedRegionFailoverStrategy@488a586e for CarTopSpeedWindowingExample (f773c4d120ead2c3675818c838f45d28).
         log.info(
                 "Using failover strategy {} for {} ({}).",
                 failoverStrategy,
@@ -178,6 +180,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         this.verticesWaitingForRestart = new HashSet<>();
         startUpAction.accept(mainThreadExecutor);
 
+        // 创建 Execution 部署器 DefaultExecutionDeployer
         this.executionDeployer =
                 executionDeployerFactory.createInstance(
                         log,
@@ -207,10 +210,14 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 
     @Override
     protected void startSchedulingInternal() {
+        // Starting scheduling with scheduling strategy [org.apache.flink.runtime.scheduler.strategy.PipelinedRegionSchedulingStrategy]
         log.info(
                 "Starting scheduling with scheduling strategy [{}]",
                 schedulingStrategy.getClass().getName());
+        // ExecutionGraph 状态转换为 Running
         transitionToRunning();
+
+        // 开始调度 调用 PipelinedRegionSchedulingStrategy.startScheduling()
         schedulingStrategy.startScheduling();
     }
 
@@ -436,14 +443,17 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 
     @Override
     public void allocateSlotsAndDeploy(final List<ExecutionVertexID> verticesToDeploy) {
+        // 获取一个 region 对应的 ExecutionVertex
         final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex =
                 executionVertexVersioner.recordVertexModifications(verticesToDeploy);
 
+        // 获取调度 region 的所有 Execution
         final List<Execution> executionsToDeploy =
                 verticesToDeploy.stream()
                         .map(this::getCurrentExecutionOfVertex)
                         .collect(Collectors.toList());
 
+        // 申请 slot 并部署 Execution
         executionDeployer.allocateSlotsAndDeploy(executionsToDeploy, requiredVersionByVertex);
     }
 

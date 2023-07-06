@@ -113,7 +113,8 @@ public class TaskManagerRunner implements FatalErrorHandler {
     private static final long FATAL_ERROR_SHUTDOWN_TIMEOUT_MS = 10000L;
 
     private static final int SUCCESS_EXIT_CODE = 0;
-    @VisibleForTesting public static final int FAILURE_EXIT_CODE = 1;
+    @VisibleForTesting
+    public static final int FAILURE_EXIT_CODE = 1;
 
     private final Thread shutdownHook;
 
@@ -185,11 +186,13 @@ public class TaskManagerRunner implements FatalErrorHandler {
         synchronized (lock) {
             rpcSystem = RpcSystem.load(configuration);
 
+            // 创建线程池
             this.executor =
                     Executors.newScheduledThreadPool(
                             Hardware.getNumberCPUCores(),
                             new ExecutorThreadFactory("taskmanager-future"));
 
+            // 创建 HA 服务
             highAvailabilityServices =
                     HighAvailabilityServicesUtils.createHighAvailabilityServices(
                             configuration,
@@ -200,6 +203,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
 
             JMXService.startInstance(configuration.getString(JMXServerOptions.JMX_SERVER_PORT));
 
+            // 创建 Actor RPC Actor
             rpcService = createRpcService(configuration, highAvailabilityServices, rpcSystem);
 
             this.resourceId =
@@ -209,9 +213,9 @@ public class TaskManagerRunner implements FatalErrorHandler {
             this.workingDirectory =
                     ClusterEntrypointUtils.createTaskManagerWorkingDirectory(
                             configuration, resourceId);
-
             LOG.info("Using working directory: {}", workingDirectory);
 
+            // 创建心跳服务
             HeartbeatServices heartbeatServices =
                     HeartbeatServices.fromConfiguration(configuration);
 
@@ -230,6 +234,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
                             rpcSystem);
             metricRegistry.startQueryService(metricQueryServiceRpcService, resourceId.unwrap());
 
+            // 创建 BlobCacheService
             blobCacheService =
                     BlobUtils.createBlobCacheService(
                             configuration,
@@ -241,6 +246,8 @@ public class TaskManagerRunner implements FatalErrorHandler {
                     ExternalResourceUtils.createStaticExternalResourceInfoProviderFromConfig(
                             configuration, pluginManager);
 
+            // 创建 TaskExecutorToServiceAdapter
+            // TaskExecutorToServiceAdapter 封装 TaskExecutor
             taskExecutorService =
                     taskExecutorServiceFactory.createTaskExecutor(
                             this.configuration,
@@ -258,7 +265,8 @@ public class TaskManagerRunner implements FatalErrorHandler {
             handleUnexpectedTaskExecutorServiceTermination();
 
             MemoryLogger.startIfConfigured(
-                    LOG, configuration, terminationFuture.thenAccept(ignored -> {}));
+                    LOG, configuration, terminationFuture.thenAccept(ignored -> {
+                    }));
         }
     }
 
@@ -285,7 +293,10 @@ public class TaskManagerRunner implements FatalErrorHandler {
 
     public void start() throws Exception {
         synchronized (lock) {
+            // 启动 TaskManagerRunner 服务
             startTaskManagerRunnerServices();
+
+            // 启动 TaskExecutor 调用其 onStart()
             taskExecutorService.start();
         }
     }
@@ -473,11 +484,14 @@ public class TaskManagerRunner implements FatalErrorHandler {
         final TaskManagerRunner taskManagerRunner;
 
         try {
+            // 创建 TaskManagerRunner
             taskManagerRunner =
                     new TaskManagerRunner(
                             configuration,
                             pluginManager,
+                            // 创建 TaskExecutor 是一个 Actor
                             TaskManagerRunner::createTaskExecutorService);
+            // 启动 TaskManagerRunner
             taskManagerRunner.start();
         } catch (Exception exception) {
             throw new FlinkException("Failed to start the TaskManagerRunner.", exception);
@@ -509,6 +523,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
         FlinkSecurityManager.setFromConfiguration(configuration);
         final PluginManager pluginManager =
                 PluginUtils.createPluginManagerFromRootFolder(configuration);
+        // 初始化文件系统
         FileSystem.initialize(configuration, pluginManager);
 
         StateChangelogStorageLoader.initialize(pluginManager);
@@ -522,6 +537,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
 
             exitCode =
                     SecurityUtils.getInstalledContext()
+                            // 运行 TaskManager
                             .runSecured(() -> runTaskManager(configuration, pluginManager));
         } catch (Throwable t) {
             throwable = ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
@@ -555,6 +571,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
             FatalErrorHandler fatalErrorHandler)
             throws Exception {
 
+        // 创建 TaskExecutor
         final TaskExecutor taskExecutor =
                 startTaskManager(
                         configuration,
@@ -569,6 +586,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
                         workingDirectory,
                         fatalErrorHandler);
 
+        // 创建 TaskExecutorToServiceAdapter 封装 TaskExecutor
         return TaskExecutorToServiceAdapter.createFor(taskExecutor);
     }
 
@@ -642,6 +660,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
 
         String metricQueryServiceAddress = metricRegistry.getMetricQueryServiceGatewayRpcAddress();
 
+        // 创建 TaskExecutor 是一个 Actor
         return new TaskExecutor(
                 rpcService,
                 taskManagerConfiguration,
@@ -747,17 +766,17 @@ public class TaskManagerRunner implements FatalErrorHandler {
                                     final String value =
                                             StringUtils.isNullOrWhitespaceOnly(rpcAddress)
                                                     ? hostName
-                                                            + "-"
-                                                            + new AbstractID()
-                                                                    .toString()
-                                                                    .substring(0, 6)
+                                                    + "-"
+                                                    + new AbstractID()
+                                                    .toString()
+                                                    .substring(0, 6)
                                                     : rpcAddress
-                                                            + ":"
-                                                            + rpcPort
-                                                            + "-"
-                                                            + new AbstractID()
-                                                                    .toString()
-                                                                    .substring(0, 6);
+                                                    + ":"
+                                                    + rpcPort
+                                                    + "-"
+                                                    + new AbstractID()
+                                                    .toString()
+                                                    .substring(0, 6);
                                     return DeterminismEnvelope.nondeterministicValue(
                                             new ResourceID(value, metadata));
                                 }));

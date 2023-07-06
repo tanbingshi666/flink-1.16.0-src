@@ -381,6 +381,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             }
         }
 
+        // Registering job manager 00000000000000000000000000000000@akka.tcp://flink@node1:41808/user/rpc/jobmanager_2 for job 8c3bd59cb48d4a3d05a6d94eba1c7dcf.
         log.info(
                 "Registering job manager {}@{} for job {}.", jobMasterId, jobManagerAddress, jobId);
 
@@ -405,6 +406,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             return FutureUtils.completedExceptionally(exception);
         }
 
+        // 连接 JobMaster
         CompletableFuture<JobMasterGateway> jobMasterGatewayFuture =
                 getRpcService().connect(jobManagerAddress, jobMasterId, JobMasterGateway.class);
 
@@ -461,6 +463,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     public CompletableFuture<RegistrationResponse> registerTaskExecutor(
             final TaskExecutorRegistration taskExecutorRegistration, final Time timeout) {
 
+        // 获取 TaskExecutor RPC 客户端
         CompletableFuture<TaskExecutorGateway> taskExecutorGatewayFuture =
                 getRpcService()
                         .connect(
@@ -477,6 +480,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         if (throwable != null) {
                             return new RegistrationResponse.Failure(throwable);
                         } else {
+                            // 注册 TaskExecutor
                             return registerTaskExecutorInternal(
                                     taskExecutorGateway, taskExecutorRegistration);
                         }
@@ -501,11 +505,14 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                 taskExecutors.get(taskManagerResourceId);
 
         if (workerTypeWorkerRegistration.getInstanceID().equals(taskManagerRegistrationId)) {
+            // SlotManager 注册 TaskExecutor 上报的 slot
+            // 并根据JobMaster的slot 请求匹配对应的 TaskExecutor 上报的 slot 是否满足
             if (slotManager.registerTaskManager(
                     workerTypeWorkerRegistration,
                     slotReport,
                     workerTypeWorkerRegistration.getTotalResourceProfile(),
                     workerTypeWorkerRegistration.getDefaultSlotResourceProfile())) {
+                // TaskExecutor 上报 Slot 成功
                 onWorkerRegistered(workerTypeWorkerRegistration.getWorker());
             }
             return CompletableFuture.completedFuture(Acknowledge.get());
@@ -560,6 +567,12 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         .thenApply(
                                 acknowledge -> {
                                     validateRunsInMainThread();
+                                    // 处理 JobMaster 的 SlotPool 请求资源
+                                    // 调用 DeclarativeSlotManager.processResourceRequirements()
+
+                                    // 先发送申请资源容器请求给 Yarn 的 ResourceManager 返回容器的地址
+                                    // 回调 YarnResourceManagerDriver.onContainersAllocated()
+                                    // 然后再启动 Worker
                                     slotManager.processResourceRequirements(resourceRequirements);
                                     return null;
                                 });
@@ -948,12 +961,14 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             blocklistHandler.registerBlocklistListener(jobMasterGateway);
         }
 
+        //  Registered job manager 00000000000000000000000000000000@akka.tcp://flink@node1:41808/user/rpc/jobmanager_2 for job 8c3bd59cb48d4a3d05a6d94eba1c7dcf.
         log.info(
                 "Registered job manager {}@{} for job {}.",
                 jobMasterGateway.getFencingToken(),
                 jobManagerAddress,
                 jobId);
 
+        // 向 JobMaster 发送心跳
         jobManagerHeartbeatManager.monitorTarget(
                 jobManagerResourceId, new JobMasterHeartbeatSender(jobMasterGateway));
 
@@ -990,6 +1005,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
 
         final WorkerType newWorker = workerStarted(taskExecutorResourceId);
 
+        // 获取 TaskExecutor 地址
         String taskExecutorAddress = taskExecutorRegistration.getTaskExecutorAddress();
         if (newWorker == null) {
             log.warn(
@@ -1000,6 +1016,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             return new TaskExecutorRegistrationRejection(
                     "The ResourceManager does not recognize this TaskExecutor.");
         } else {
+            // 封装 TaskExecutor 注册信息
             WorkerRegistration<WorkerType> registration =
                     new WorkerRegistration<>(
                             taskExecutorGateway,
@@ -1012,12 +1029,14 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                             taskExecutorRegistration.getDefaultSlotResourceProfile(),
                             taskExecutorRegistration.getNodeId());
 
+            // Registering TaskManager with ResourceID container_1688453821841_0002_01_000002(node2:38881) (akka.tcp://flink@node2:34773/user/rpc/taskmanager_0) at ResourceManager
             log.info(
                     "Registering TaskManager with ResourceID {} ({}) at ResourceManager",
                     taskExecutorResourceId.getStringWithMetadata(),
                     taskExecutorAddress);
             taskExecutors.put(taskExecutorResourceId, registration);
 
+            // ResourceManager 向 TaskExecutor 维持心跳
             taskManagerHeartbeatManager.monitorTarget(
                     taskExecutorResourceId, new TaskExecutorHeartbeatSender(taskExecutorGateway));
 
@@ -1355,6 +1374,8 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
         @Override
         public boolean allocateResource(WorkerResourceSpec workerResourceSpec) {
             validateRunsInMainThread();
+            // 启动 Worker
+            // 调用 ActiveResourceManager.startNewWorker()
             return startNewWorker(workerResourceSpec);
         }
 
