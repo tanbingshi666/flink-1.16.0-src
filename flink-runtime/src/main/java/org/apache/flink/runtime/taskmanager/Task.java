@@ -270,7 +270,8 @@ public class Task
      * The invokable of this task, if initialized. All accesses must copy the reference and check
      * for null, as this field is cleared as part of the disposal logic.
      */
-    @Nullable private volatile TaskInvokable invokable;
+    @Nullable
+    private volatile TaskInvokable invokable;
 
     /** The current execution state of the task. */
     private volatile ExecutionState executionState = ExecutionState.CREATED;
@@ -324,6 +325,7 @@ public class Task
         Preconditions.checkNotNull(jobInformation);
         Preconditions.checkNotNull(taskInformation);
 
+        // Task 任务的信息
         this.taskInfo =
                 new TaskInfo(
                         taskInformation.getTaskName(),
@@ -381,20 +383,23 @@ public class Task
 
         final String taskNameWithSubtaskAndId = taskNameWithSubtask + " (" + executionId + ')';
 
+        // 创建 ShuffleIOOwnerContext
         final ShuffleIOOwnerContext taskShuffleContext =
                 shuffleEnvironment.createShuffleIOOwnerContext(
                         taskNameWithSubtaskAndId, executionId, metrics.getIOMetricGroup());
 
         // produced intermediate result partitions
+        // Task 生产输出数据 ResultPartition
         final ResultPartitionWriter[] resultPartitionWriters =
                 shuffleEnvironment
                         .createResultPartitionWriters(
                                 taskShuffleContext, resultPartitionDeploymentDescriptors)
-                        .toArray(new ResultPartitionWriter[] {});
+                        .toArray(new ResultPartitionWriter[]{});
 
         this.partitionWriters = resultPartitionWriters;
 
         // consumed intermediate result partitions
+        // Task 输入数据 InputGate
         final IndexedInputGate[] gates =
                 shuffleEnvironment
                         .createInputGates(taskShuffleContext, this, inputGateDeploymentDescriptors)
@@ -493,7 +498,7 @@ public class Task
         if (invokable == null
                 || partitionWriters.length == 0
                 || (executionState != ExecutionState.INITIALIZING
-                        && executionState != ExecutionState.RUNNING)) {
+                && executionState != ExecutionState.RUNNING)) {
             return false;
         }
         for (int i = 0; i < partitionWriters.length; ++i) {
@@ -558,6 +563,7 @@ public class Task
         // ----------------------------
         //  Initial State transition
         // ----------------------------
+        // 1 初始状态 CREATED -> DEPLOYING
         while (true) {
             ExecutionState current = this.executionState;
             if (current == ExecutionState.CREATED) {
@@ -612,19 +618,17 @@ public class Task
             LOG.info("Loading JAR files for task {}.", this);
 
             userCodeClassLoader = createUserCodeClassloader();
+            // 2 反序列化任务执行配置
             final ExecutionConfig executionConfig =
                     serializedExecutionConfig.deserializeValue(userCodeClassLoader.asClassLoader());
-
             if (executionConfig.getTaskCancellationInterval() >= 0) {
                 // override task cancellation interval from Flink config if set in ExecutionConfig
                 taskCancellationInterval = executionConfig.getTaskCancellationInterval();
             }
-
             if (executionConfig.getTaskCancellationTimeout() >= 0) {
                 // override task cancellation timeout from Flink config if set in ExecutionConfig
                 taskCancellationTimeout = executionConfig.getTaskCancellationTimeout();
             }
-
             if (isCanceledOrFailed()) {
                 throw new CancelTaskException();
             }
@@ -635,9 +639,9 @@ public class Task
             // memory to run the necessary data exchanges
             // the registration must also strictly be undone
             // ----------------------------------------------------------------
-
             LOG.debug("Registering task at network: {}.", this);
 
+            // 3 设置 Task 分区输入 InputGate 和输出 ResultPartition
             setupPartitionsAndGates(partitionWriters, inputGates);
 
             for (ResultPartitionWriter partitionWriter : partitionWriters) {
@@ -645,6 +649,7 @@ public class Task
             }
 
             // next, kick off the background copying of files for the distributed cache
+            // 4 创建分布式缓存文件
             try {
                 for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
                         DistributedCache.readFileInfoFromConfig(jobConfiguration)) {
@@ -669,10 +674,11 @@ public class Task
             // ----------------------------------------------------------------
             //  call the user code initialization methods
             // ----------------------------------------------------------------
-
+            // 5 创建任务 KV 注册器 TaskKvStateRegistry
             TaskKvStateRegistry kvStateRegistry =
                     kvStateService.createKvStateTaskRegistry(jobId, getJobVertexId());
 
+            // 6 创建 Task 运行环境
             Environment env =
                     new RuntimeEnvironment(
                             jobId,
@@ -712,6 +718,13 @@ public class Task
             FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
             try {
                 // now load and instantiate the task's invokable code
+                // 7 反射创建算子任务调用其构造方法(携带 Environment 形参)
+                // 在用户将算子 Transformation 转换为 StreamNode 的时候已经确定运行哪个 Task
+                /**
+                 * StreamGraph.addOperator
+                 * Class<? extends TaskInvokable> invokableClass =
+                 *   operatorFactory.isStreamSource() ? SourceStreamTask.class : OneInputStreamTask.class;
+                 */
                 invokable =
                         loadAndInstantiateInvokable(
                                 userCodeClassLoader.asClassLoader(), nameOfInvokableClass, env);
@@ -727,6 +740,7 @@ public class Task
             // by the time we switched to running.
             this.invokable = invokable;
 
+            // 8 执行启动算子任务 调用算子任务的 invoke()
             restoreAndInvoke(invokable);
 
             // make sure, we enter the catch block if the task leaves the invoke() method due
@@ -740,6 +754,7 @@ public class Task
             // ----------------------------------------------------------------
 
             // finish the produced partitions. if this fails, we consider the execution failed.
+            // 9 如果任务运行完成 关闭 ResultPartition
             for (ResultPartitionWriter partitionWriter : partitionWriters) {
                 if (partitionWriter != null) {
                     partitionWriter.finish();
@@ -748,6 +763,7 @@ public class Task
 
             // try to mark the task as finished
             // if that fails, the task was canceled/failed in the meantime
+            // 10 状态转换 RUNNING -> FINISHED
             if (!transitionState(ExecutionState.RUNNING, ExecutionState.FINISHED)) {
                 throw new CancelTaskException();
             }
@@ -871,7 +887,7 @@ public class Task
         // check if the exception is unrecoverable
         if (ExceptionUtils.isJvmFatalError(t)
                 || (t instanceof OutOfMemoryError
-                        && taskManagerConfig.shouldExitJvmOnOutOfMemoryError())) {
+                && taskManagerConfig.shouldExitJvmOnOutOfMemoryError())) {
 
             // terminate the JVM immediately
             // don't attempt a clean shutdown, because we cannot expect the clean shutdown
@@ -893,6 +909,7 @@ public class Task
         try {
             // switch to the INITIALIZING state, if that fails, we have been canceled/failed in the
             // meantime
+            // 8.1 状态转换 DEPLOYING -> INITIALIZING
             if (!transitionState(ExecutionState.DEPLOYING, ExecutionState.INITIALIZING)) {
                 throw new CancelTaskException();
             }
@@ -903,8 +920,10 @@ public class Task
             // make sure the user code classloader is accessible thread-locally
             executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
 
+            // 8.2 触发任务状态恢复
             runWithSystemExitMonitoring(finalInvokable::restore);
 
+            // 8.3 状态转换 INITIALIZING -> RUNNING
             if (!transitionState(ExecutionState.INITIALIZING, ExecutionState.RUNNING)) {
                 throw new CancelTaskException();
             }
@@ -913,7 +932,11 @@ public class Task
             taskManagerActions.updateTaskExecutionState(
                     new TaskExecutionState(executionId, ExecutionState.RUNNING));
 
-            runWithSystemExitMonitoring(finalInvokable::invoke);
+            // 8.4 触发任务执行
+            runWithSystemExitMonitoring(
+                    // 核心入口
+                    finalInvokable::invoke
+            );
         } catch (Throwable throwable) {
             try {
                 runWithSystemExitMonitoring(() -> finalInvokable.cleanUp(throwable));
@@ -943,14 +966,17 @@ public class Task
     @VisibleForTesting
     public static void setupPartitionsAndGates(
             ResultPartitionWriter[] producedPartitions, InputGate[] inputGates) throws IOException {
-
+        // 设置 ResultPartition
         for (ResultPartitionWriter partition : producedPartitions) {
+            // 调用 ResultPartition.setup()
             partition.setup();
         }
 
         // InputGates must be initialized after the partitions, since during InputGate#setup
         // we are requesting partitions
+        // 设置 InputGate
         for (InputGate gate : inputGates) {
+            // 调用 SingleInputGate.setup()
             gate.setup();
         }
     }
@@ -1048,6 +1074,7 @@ public class Task
      *
      * @param currentState of the execution
      * @param newState of the execution
+     *
      * @return true if the transition was successful, otherwise false
      */
     private boolean transitionState(ExecutionState currentState, ExecutionState newState) {
@@ -1060,6 +1087,7 @@ public class Task
      * @param currentState of the execution
      * @param newState of the execution
      * @param cause of the transition change or null
+     *
      * @return true if the transition was successful, otherwise false
      */
     private boolean transitionState(
@@ -1471,7 +1499,7 @@ public class Task
      * takes care of that).
      *
      * @throws FlinkException This method throws exceptions indicating the reason why delivery did
-     *     not succeed.
+     *         not succeed.
      */
     public void deliverOperatorEvent(OperatorID operator, SerializedValue<OperatorEvent> evt)
             throws FlinkException {
@@ -1480,7 +1508,7 @@ public class Task
 
         if (invokable == null
                 || (currentState != ExecutionState.RUNNING
-                        && currentState != ExecutionState.INITIALIZING)) {
+                && currentState != ExecutionState.INITIALIZING)) {
             throw new TaskNotRunningException("Task is not running, but in state " + currentState);
         }
 
@@ -1562,9 +1590,11 @@ public class Task
      * @param classLoader The classloader to load the class through.
      * @param className The name of the class to load.
      * @param environment The task environment.
+     *
      * @return The instantiated invokable task object.
+     *
      * @throws Throwable Forwards all exceptions that happen during initialization of the task. Also
-     *     throws an exception if the task class misses the necessary constructor.
+     *         throws an exception if the task class misses the necessary constructor.
      */
     private static TaskInvokable loadAndInstantiateInvokable(
             ClassLoader classLoader, String className, Environment environment) throws Throwable {

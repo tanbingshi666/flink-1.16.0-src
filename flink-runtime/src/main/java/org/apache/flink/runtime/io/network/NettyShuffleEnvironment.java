@@ -219,6 +219,7 @@ public class NettyShuffleEnvironment
             Preconditions.checkState(
                     !isClosed, "The NettyShuffleEnvironment has already been shut down.");
 
+            // 创建 ResultPartition
             ResultPartition[] resultPartitions =
                     new ResultPartition[resultPartitionDeploymentDescriptors.size()];
             for (int partitionIndex = 0;

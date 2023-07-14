@@ -67,7 +67,8 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
     protected final boolean flushAlways;
 
     /** The thread that periodically flushes the output, to give an upper latency bound. */
-    @Nullable private final OutputFlusher outputFlusher;
+    @Nullable
+    private final OutputFlusher outputFlusher;
 
     /**
      * To avoid synchronization overhead on the critical path, best-effort error tracking is enough
@@ -104,9 +105,11 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
     protected void emit(T record, int targetSubpartition) throws IOException {
         checkErroneous();
 
+        // 把 Record 数据写到 ResultSubPartition 等待网络传输给下游
         targetPartition.emitRecord(serializeRecord(serializer, record), targetSubpartition);
 
         if (flushAlways) {
+            // 网络传输给下游
             targetPartition.flush(targetSubpartition);
         }
     }
@@ -206,8 +209,8 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
         // For performance reasons, we are not checking volatile field every single time.
         if (flusherException != null
                 || (volatileFlusherExceptionCheckSkipCount
-                                >= VOLATILE_FLUSHER_EXCEPTION_MAX_CHECK_SKIP_COUNT
-                        && volatileFlusherException != null)) {
+                >= VOLATILE_FLUSHER_EXCEPTION_MAX_CHECK_SKIP_COUNT
+                && volatileFlusherException != null)) {
             throw new IOException(
                     "An exception happened while flushing the outputs", volatileFlusherException);
         }

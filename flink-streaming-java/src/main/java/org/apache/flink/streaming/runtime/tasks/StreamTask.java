@@ -185,10 +185,10 @@ import static org.apache.flink.util.concurrent.FutureUtils.assertNoException;
 @Internal
 public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         implements TaskInvokable,
-                CheckpointableTask,
-                CoordinatedTask,
-                AsyncExceptionHandler,
-                ContainingTaskDetails {
+        CheckpointableTask,
+        CoordinatedTask,
+        AsyncExceptionHandler,
+        ContainingTaskDetails {
 
     /** The thread group that holds all trigger timer threads. */
     public static final ThreadGroup TRIGGER_THREAD_GROUP = new ThreadGroup("Triggers");
@@ -211,7 +211,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     private final StreamTaskActionExecutor actionExecutor;
 
     /** The input processor. Initialized in {@link #init()} method. */
-    @Nullable protected StreamInputProcessor inputProcessor;
+    @Nullable
+    protected StreamInputProcessor inputProcessor;
 
     /** the main operator that consumes the input streams of this task. */
     protected OP mainOperator;
@@ -304,7 +305,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     @GuardedBy("shouldInterruptOnCancelLock")
     private boolean shouldInterruptOnCancel = true;
 
-    @Nullable private final AvailabilityProvider changelogWriterAvailabilityProvider;
+    @Nullable
+    private final AvailabilityProvider changelogWriterAvailabilityProvider;
 
     // ------------------------------------------------------------------------
 
@@ -349,9 +351,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
      * @param environment The task environment for this task.
      * @param timerService Optionally, a specific timer service to use.
      * @param uncaughtExceptionHandler to handle uncaught exceptions in the async operations thread
-     *     pool
+     *         pool
      * @param actionExecutor a mean to wrap all actions performed by this task thread. Currently,
-     *     only SynchronizedActionExecutor can be used to preserve locking semantics.
+     *         only SynchronizedActionExecutor can be used to preserve locking semantics.
      */
     protected StreamTask(
             Environment environment,
@@ -359,11 +361,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
             StreamTaskActionExecutor actionExecutor)
             throws Exception {
+
+        // 往下追
         this(
                 environment,
                 timerService,
                 uncaughtExceptionHandler,
                 actionExecutor,
+                // 创建 TaskMailboxImpl
                 new TaskMailboxImpl(Thread.currentThread()));
     }
 
@@ -372,12 +377,15 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             @Nullable TimerService timerService,
             Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
             StreamTaskActionExecutor actionExecutor,
+            // TaskMailboxImpl
             TaskMailbox mailbox)
             throws Exception {
         // The registration of all closeable resources. The order of registration is important.
         resourceCloser = new AutoCloseableRegistry();
         try {
+            // 任务环境 可以说所有Task的信息都在environment里面
             this.environment = environment;
+            // 创建 StreamConfig
             this.configuration = new StreamConfig(environment.getTaskConfiguration());
 
             // Initialize mailbox metrics
@@ -393,6 +401,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                     .getIOMetricGroup()
                     .registerMailboxSizeSupplier(() -> mailbox.size());
 
+            // 创建 MailboxProcessor
+            // 核心方法 processInput() 接收上游数据并处理
             this.mailboxProcessor =
                     new MailboxProcessor(
                             this::processInput, mailbox, actionExecutor, mailboxMetricsControl);
@@ -400,22 +410,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             // Should be closed last.
             resourceCloser.registerCloseable(mailboxProcessor);
 
+            // 创建 IO 线程池
             this.channelIOExecutor =
                     Executors.newSingleThreadExecutor(
                             new ExecutorThreadFactory("channel-state-unspilling"));
             resourceCloser.registerCloseable(channelIOExecutor::shutdown);
 
+            // 创建 recordWriter
             this.recordWriter = createRecordWriterDelegate(configuration, environment);
+
             // Release the output resources. this method should never fail.
             resourceCloser.registerCloseable(this::releaseOutputResources);
             // If the operators won't be closed explicitly, register it to a hard close.
             resourceCloser.registerCloseable(this::closeAllOperators);
             resourceCloser.registerCloseable(this::cleanUpInternal);
 
+            // FatalExitExceptionHandler
             this.actionExecutor = Preconditions.checkNotNull(actionExecutor);
+            // 创建 MailboxExecutorImpl
             this.mainMailboxExecutor = mailboxProcessor.getMainMailboxExecutor();
+            // 创建 StreamTaskAsyncExceptionHandler
             this.asyncExceptionHandler = new StreamTaskAsyncExceptionHandler(environment);
-
+            // 创建异步 Operator 线程池
             this.asyncOperationsThreadPool =
                     Executors.newCachedThreadPool(
                             new ExecutorThreadFactory("AsyncOperations", uncaughtExceptionHandler));
@@ -427,16 +443,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             environment.setMainMailboxExecutor(mainMailboxExecutor);
             environment.setAsyncOperationsThreadPool(asyncOperationsThreadPool);
 
+            // 创建状态后端
             this.stateBackend = createStateBackend();
+            // 创建 checkpoint 存储
             this.checkpointStorage = createCheckpointStorage(stateBackend);
             this.changelogWriterAvailabilityProvider =
                     environment.getTaskStateManager().getStateChangelogStorage() == null
                             ? null
                             : environment
-                                    .getTaskStateManager()
-                                    .getStateChangelogStorage()
-                                    .getAvailabilityProvider();
-
+                            .getTaskStateManager()
+                            .getStateChangelogStorage()
+                            .getAvailabilityProvider();
             CheckpointStorageAccess checkpointStorageAccess =
                     checkpointStorage.createCheckpointStorage(getEnvironment().getJobID());
 
@@ -444,13 +461,15 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
             // if the clock is not already set, then assign a default TimeServiceProvider
             if (timerService == null) {
+                // 创建时间服务器 SystemProcessingTimeService
                 this.timerService = createTimerService("Time Trigger for " + getName());
             } else {
                 this.timerService = timerService;
             }
-
+            // 创建系统时间服务器 SystemProcessingTimeService
             this.systemTimerService = createTimerService("System Time Trigger for " + getName());
 
+            // 创建 checkpoint 协调器
             this.subtaskCheckpointCoordinator =
                     new SubtaskCheckpointCoordinatorImpl(
                             checkpointStorageAccess,
@@ -473,6 +492,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             // Register to stop all timers and threads. Should be closed first.
             resourceCloser.registerCloseable(this::tryShutdownTimerService);
 
+            // InputGate 设置 Writer
             injectChannelStateWriterIntoChannels();
 
             environment.getMetricGroup().getIOMetricGroup().setEnableBusyTime(true);
@@ -528,23 +548,27 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
     protected abstract void init() throws Exception;
 
-    protected void cancelTask() throws Exception {}
+    protected void cancelTask() throws Exception {
+    }
 
     /**
      * This method implements the default action of the task (e.g. processing one event from the
      * input). Implementations should (in general) be non-blocking.
      *
      * @param controller controller object for collaborative interaction between the action and the
-     *     stream task.
+     *         stream task.
+     *
      * @throws Exception on any problems in the action.
      */
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
+        // 获取输入数据
+        // 调用 StreamOneInputProcessor.processInput()
         DataInputStatus status = inputProcessor.processInput();
         switch (status) {
             case MORE_AVAILABLE:
                 if (recordWriter.isAvailable()
                         && (changelogWriterAvailabilityProvider == null
-                                || changelogWriterAvailabilityProvider.isAvailable())) {
+                        || changelogWriterAvailabilityProvider.isAvailable())) {
                     return;
                 }
                 break;
@@ -637,7 +661,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
      *
      * <p>For tasks other than the source task, this method does nothing.
      */
-    protected void advanceToEndOfEventTime() throws Exception {}
+    protected void advanceToEndOfEventTime() throws Exception {
+    }
 
     // ------------------------------------------------------------------------
     //  Core work methods of the Stream Task
@@ -767,6 +792,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         // Allow invoking method 'invoke' without having to call 'restore' before it.
         if (!isRunning) {
             LOG.debug("Restoring during invoke will be called.");
+            // 恢复任务
             restoreInternal();
         }
 
@@ -777,12 +803,15 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
         // let the task do its work
         getEnvironment().getMetricGroup().getIOMetricGroup().markTaskStart();
+
+        // 运行任务 (阻塞知道任务运行完成或者取消)
         runMailboxLoop();
 
         // if this left the run() method cleanly despite the fact that this was canceled,
         // make sure the "clean shutdown" is not attempted
         ensureNotCanceled();
 
+        // 任务运行结束
         afterInvoke();
     }
 
@@ -794,9 +823,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         // especially visible in batch, with disabled checkpointing and no processing time timers.
         if (getEnvironment().getAllInputGates().length == 0
                 || !environment
-                        .getTaskManagerInfo()
-                        .getConfiguration()
-                        .getBoolean(TaskManagerOptions.BUFFER_DEBLOAT_ENABLED)) {
+                .getTaskManagerInfo()
+                .getConfiguration()
+                .getBoolean(TaskManagerOptions.BUFFER_DEBLOAT_ENABLED)) {
             return;
         }
         systemTimerService.registerTimer(
@@ -828,6 +857,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     public void runMailboxLoop() throws Exception {
+        // 运行 mailBox
         mailboxProcessor.runMailboxLoop();
     }
 
@@ -905,8 +935,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
     private boolean areCheckpointsWithFinishedTasksEnabled() {
         return configuration
-                        .getConfiguration()
-                        .get(ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH)
+                .getConfiguration()
+                .get(ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH)
                 && configuration.isCheckpointingEnabled();
     }
 
@@ -1137,8 +1167,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             latestAsyncCheckpointStartDelayNanos =
                     1_000_000
                             * Math.max(
-                                    0,
-                                    System.currentTimeMillis() - checkpointMetaData.getTimestamp());
+                            0,
+                            System.currentTimeMillis() - checkpointMetaData.getTimestamp());
 
             // No alignment if we inject a checkpoint
             CheckpointMetricsBuilder checkpointMetrics =
@@ -1577,9 +1607,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
     @VisibleForTesting
     public static <OUT>
-            RecordWriterDelegate<SerializationDelegate<StreamRecord<OUT>>>
-                    createRecordWriterDelegate(
-                            StreamConfig configuration, Environment environment) {
+    RecordWriterDelegate<SerializationDelegate<StreamRecord<OUT>>>
+    createRecordWriterDelegate(
+            StreamConfig configuration, Environment environment) {
         List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> recordWrites =
                 createRecordWriters(configuration, environment);
         if (recordWrites.size() == 1) {
@@ -1592,8 +1622,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     private static <OUT>
-            List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> createRecordWriters(
-                    StreamConfig configuration, Environment environment) {
+    List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> createRecordWriters(
+            StreamConfig configuration, Environment environment) {
         List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> recordWriters =
                 new ArrayList<>();
         List<NonChainedOutput> outputsInOrder =
@@ -1690,7 +1720,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
     private static class ResumeWrapper implements Runnable {
         private final Suspension suspendedDefaultAction;
-        @Nullable private final PeriodTimer timer;
+        @Nullable
+        private final PeriodTimer timer;
 
         public ResumeWrapper(Suspension suspendedDefaultAction, @Nullable PeriodTimer timer) {
             this.suspendedDefaultAction = suspendedDefaultAction;

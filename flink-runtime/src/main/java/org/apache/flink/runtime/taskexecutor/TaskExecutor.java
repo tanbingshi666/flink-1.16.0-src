@@ -638,7 +638,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 
             // re-integrate offloaded data:
             try {
-                //
+                // 从 BlobServer 加载 用户程序类、jar、依赖jar 等
                 tdd.loadBigData(taskExecutorBlobService.getPermanentBlobService());
             } catch (IOException | ClassNotFoundException e) {
                 throw new TaskSubmissionException(
@@ -646,6 +646,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             }
 
             // deserialize the pre-serialized information
+            // 从 TDD 反序列化 JobInformation TaskInformation
             final JobInformation jobInformation;
             final TaskInformation taskInformation;
             try {
@@ -672,7 +673,6 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             TaskManagerJobMetricGroup jobGroup =
                     taskManagerMetricGroup.addJob(
                             jobInformation.getJobId(), jobInformation.getJobName());
-
             // note that a pre-existing job group can NOT be closed concurrently - this is done by
             // the same TM thread in removeJobMetricsGroup
             TaskMetricGroup taskMetricGroup =
@@ -697,12 +697,12 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             CheckpointResponder checkpointResponder = jobManagerConnection.getCheckpointResponder();
             GlobalAggregateManager aggregateManager =
                     jobManagerConnection.getGlobalAggregateManager();
-
             LibraryCacheManager.ClassLoaderHandle classLoaderHandle =
                     jobManagerConnection.getClassLoaderHandle();
             PartitionProducerStateChecker partitionStateChecker =
                     jobManagerConnection.getPartitionStateChecker();
 
+            // Task 本地状态存储
             final TaskLocalStateStore localStateStore =
                     localStateStoresManager.localStateStoreForSubtask(
                             jobId,
@@ -728,7 +728,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 
             final JobManagerTaskRestore taskRestore = tdd.getTaskRestore();
 
-            // 创建 TaskStateManagerImpl
+            // 创建 Task 状态管理者 TaskStateManagerImpl
             final TaskStateManager taskStateManager =
                     new TaskStateManagerImpl(
                             jobId,
@@ -754,7 +754,9 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                             taskInformation,
                             tdd.getExecutionAttemptId(),
                             tdd.getAllocationId(),
+                            // Task 生产输出输出
                             tdd.getProducedPartitions(),
+                            // Task 输入数据
                             tdd.getInputGates(),
                             memoryManager,
                             taskExecutorServices.getIOManager(),

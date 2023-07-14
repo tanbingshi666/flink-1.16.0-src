@@ -62,6 +62,8 @@ public final class StreamOneInputProcessor<IN> implements StreamInputProcessor {
 
     @Override
     public DataInputStatus processInput() throws Exception {
+        // 将 input数据输入到 output
+        // 调用 AbstractStreamTaskNetworkInput.emitNext()
         DataInputStatus status = input.emitNext(output);
 
         if (status == DataInputStatus.END_OF_DATA) {

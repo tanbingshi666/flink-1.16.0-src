@@ -100,6 +100,7 @@ public class StreamSourceContexts {
 
         @Override
         public void collect(T element) {
+            // 不考虑水位线情况下 调用 NonTimestampContext.collect()
             nestedContext.collect(element);
         }
 
@@ -194,7 +195,12 @@ public class StreamSourceContexts {
         @Override
         public void collect(T element) {
             synchronized (lock) {
-                output.collect(reuse.replace(element));
+                // 正常情况下 Source 是没有 operatorChain 相关
+                // 调用 RecordWriterOutput.collect()
+                output.collect(
+                        // 精巧设计 对象复用
+                        reuse.replace(element)
+                );
             }
         }
 
@@ -220,7 +226,8 @@ public class StreamSourceContexts {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+        }
     }
 
     /**

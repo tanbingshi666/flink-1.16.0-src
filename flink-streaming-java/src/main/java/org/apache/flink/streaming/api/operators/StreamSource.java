@@ -63,7 +63,7 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
 
     public void run(final Object lockingObject, final OperatorChain<?, ?> operatorChain)
             throws Exception {
-
+        // output 就是算子产出数据区
         run(lockingObject, output, operatorChain);
     }
 
@@ -74,7 +74,6 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
             throws Exception {
 
         final TimeCharacteristic timeCharacteristic = getOperatorConfig().getTimeCharacteristic();
-
         final Configuration configuration =
                 this.getContainingTask().getEnvironment().getTaskManagerInfo().getConfiguration();
         final long latencyTrackingInterval =
@@ -93,9 +92,16 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
                             getRuntimeContext().getIndexOfThisSubtask());
         }
 
+        // 自动生成 watermark 间隔
         final long watermarkInterval =
                 getRuntimeContext().getExecutionConfig().getAutoWatermarkInterval();
-
+        // 创建 Context SwitchingOnClose
+        /**
+         * 根据时间语义检查对应的 Context 由 SwitchingOnClose进行包装
+         * EventTime   -> ManualWatermarkContext
+         * IngestionTime -> AutomaticWatermarkContext
+         * ProcessingTime -> NonTimestampContext
+         */
         this.ctx =
                 StreamSourceContexts.getSourceContext(
                         timeCharacteristic,
@@ -107,6 +113,11 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
                         emitProgressiveWatermarks);
 
         try {
+            // userFunction 就是用户自定义函数算子
+            /**
+             * 1 SocketTextStreamFunction.run()
+             * 2 FlinkKafkaConsumerBase.run()
+             */
             userFunction.run(ctx);
         } finally {
             if (latencyEmitter != null) {

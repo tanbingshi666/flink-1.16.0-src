@@ -263,7 +263,9 @@ public class TaskManagerServices {
      * @param ioExecutor executor for async IO operations
      * @param fatalErrorHandler to handle class loading OOMs
      * @param workingDirectory the working directory of the process
+     *
      * @return task manager components
+     *
      * @throws Exception
      */
     public static TaskManagerServices fromConfiguration(
@@ -278,12 +280,15 @@ public class TaskManagerServices {
         // pre-start checks
         checkTempDirs(taskManagerServicesConfiguration.getTmpDirPaths());
 
+        // 创建 TaskEventDispatcher
         final TaskEventDispatcher taskEventDispatcher = new TaskEventDispatcher();
 
         // start the I/O manager, it will create some temp directories.
+        // 创建 IOManagerAsync
         final IOManager ioManager =
                 new IOManagerAsync(taskManagerServicesConfiguration.getTmpDirPaths());
 
+        // 创建 NettyShuffleEnvironment
         final ShuffleEnvironment<?, ?> shuffleEnvironment =
                 createShuffleEnvironment(
                         taskManagerServicesConfiguration,
@@ -292,10 +297,12 @@ public class TaskManagerServices {
                         ioExecutor);
         final int listeningDataPort = shuffleEnvironment.start();
 
+        // 创建并启动 KvStateService
         final KvStateService kvStateService =
                 KvStateService.fromConfiguration(taskManagerServicesConfiguration);
         kvStateService.start();
 
+        // 创建 UnresolvedTaskManagerLocation
         final UnresolvedTaskManagerLocation unresolvedTaskManagerLocation =
                 new UnresolvedTaskManagerLocation(
                         taskManagerServicesConfiguration.getResourceID(),
@@ -307,8 +314,10 @@ public class TaskManagerServices {
                                 : listeningDataPort,
                         taskManagerServicesConfiguration.getNodeId());
 
+        // 创建 BroadcastVariableManager
         final BroadcastVariableManager broadcastVariableManager = new BroadcastVariableManager();
 
+        // 创建 TaskSlotTable
         final TaskSlotTable<Task> taskSlotTable =
                 createTaskSlotTable(
                         taskManagerServicesConfiguration.getNumberOfSlots(),
@@ -319,17 +328,20 @@ public class TaskManagerServices {
 
         final JobTable jobTable = DefaultJobTable.create();
 
+        // 创建 DefaultJobLeaderService
         final JobLeaderService jobLeaderService =
                 new DefaultJobLeaderService(
                         unresolvedTaskManagerLocation,
                         taskManagerServicesConfiguration.getRetryingRegistrationConfiguration());
 
+        // 创建 TaskExecutorLocalStateStoresManager
         final TaskExecutorLocalStateStoresManager taskStateManager =
                 new TaskExecutorLocalStateStoresManager(
                         taskManagerServicesConfiguration.isLocalRecoveryEnabled(),
                         taskManagerServicesConfiguration.getLocalRecoveryStateDirectories(),
                         ioExecutor);
 
+        // 创建 TaskExecutorStateChangelogStoragesManager
         final TaskExecutorStateChangelogStoragesManager changelogStoragesManager =
                 new TaskExecutorStateChangelogStoragesManager();
 
@@ -341,6 +353,8 @@ public class TaskManagerServices {
                 taskManagerServicesConfiguration
                         .getConfiguration()
                         .getBoolean(CoreOptions.CHECK_LEAKED_CLASSLOADER);
+
+        // 创建 BlobLibraryCacheManager
         final LibraryCacheManager libraryCacheManager =
                 new BlobLibraryCacheManager(
                         permanentBlobService,
@@ -362,6 +376,7 @@ public class TaskManagerServices {
                     NoOpSlotAllocationSnapshotPersistenceService.INSTANCE;
         }
 
+        // 创建 TaskManagerServices
         return new TaskManagerServices(
                 unresolvedTaskManagerLocation,
                 taskManagerServicesConfiguration.getManagedMemorySize().getBytes(),
@@ -407,6 +422,7 @@ public class TaskManagerServices {
             Executor ioExecutor)
             throws FlinkException {
 
+        // 创建 shuffle 环境 上下文 ShuffleEnvironmentContext
         final ShuffleEnvironmentContext shuffleEnvironmentContext =
                 new ShuffleEnvironmentContext(
                         taskManagerServicesConfiguration.getConfiguration(),
@@ -420,6 +436,7 @@ public class TaskManagerServices {
                         taskManagerMetricGroup,
                         ioExecutor);
 
+        // 创建 NettyShuffleMaster
         return ShuffleServiceLoader.loadShuffleServiceFactory(
                         taskManagerServicesConfiguration.getConfiguration())
                 .createShuffleEnvironment(shuffleEnvironmentContext);
@@ -430,8 +447,9 @@ public class TaskManagerServices {
      * created, are proper directories (not files), and are writable.
      *
      * @param tmpDirs The array of directory paths to check.
+     *
      * @throws IOException Thrown if any of the directories does not exist and cannot be created or
-     *     is not writable or is a file, rather than a directory.
+     *         is not writable or is a file, rather than a directory.
      */
     private static void checkTempDirs(String[] tmpDirs) throws IOException {
         for (String dir : tmpDirs) {

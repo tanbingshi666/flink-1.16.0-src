@@ -178,6 +178,7 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
+            // 读取上游发送过来的数据
             decodeMsg(msg);
         } catch (Throwable t) {
             notifyAllChannelsOfErrorAndClose(t);
@@ -263,6 +264,7 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
         if (msgClazz == NettyMessage.BufferResponse.class) {
             NettyMessage.BufferResponse bufferOrEvent = (NettyMessage.BufferResponse) msg;
 
+            // 根据 receiverId 获取 InputChannel
             RemoteInputChannel inputChannel = inputChannels.get(bufferOrEvent.receiverId);
             if (inputChannel == null || inputChannel.isReleased()) {
                 bufferOrEvent.releaseBuffer();
@@ -273,6 +275,7 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
             }
 
             try {
+                // 处理 buffer 或者 event
                 decodeBufferOrEvent(inputChannel, bufferOrEvent);
             } catch (Throwable t) {
                 inputChannel.onError(t);
@@ -331,8 +334,11 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
         if (bufferOrEvent.isBuffer() && bufferOrEvent.bufferSize == 0) {
             inputChannel.onEmptyBuffer(bufferOrEvent.sequenceNumber, bufferOrEvent.backlog);
         } else if (bufferOrEvent.getBuffer() != null) {
+            // 处理 buffer
             inputChannel.onBuffer(
-                    bufferOrEvent.getBuffer(), bufferOrEvent.sequenceNumber, bufferOrEvent.backlog);
+                    bufferOrEvent.getBuffer(),
+                    bufferOrEvent.sequenceNumber,
+                    bufferOrEvent.backlog);
         } else {
             throw new IllegalStateException(
                     "The read buffer is null in credit-based input channel.");

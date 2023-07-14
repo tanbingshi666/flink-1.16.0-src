@@ -199,7 +199,8 @@ public class SingleInputGate extends IndexedInputGate {
 
     private final CompletableFuture<Void> closeFuture;
 
-    @Nullable private final BufferDecompressor bufferDecompressor;
+    @Nullable
+    private final BufferDecompressor bufferDecompressor;
 
     private final MemorySegmentProvider memorySegmentProvider;
 
@@ -271,9 +272,11 @@ public class SingleInputGate extends IndexedInputGate {
                 this.bufferPool == null,
                 "Bug in input gate setup logic: Already registered buffer pool.");
 
+        // 获取输入缓存区 BufferPool
         BufferPool bufferPool = bufferPoolFactory.get();
+        // 设置输入缓存区
         setBufferPool(bufferPool);
-
+        // 设置 InputChannel
         setupChannels();
     }
 
@@ -377,8 +380,8 @@ public class SingleInputGate extends IndexedInputGate {
                         numberOfInputChannels - channelsWithEndOfPartitionEvents.cardinality());
         synchronized (inputChannelsWithData) {
             for (int i = channelsWithEndOfPartitionEvents.nextClearBit(0);
-                    i < numberOfInputChannels;
-                    i = channelsWithEndOfPartitionEvents.nextClearBit(i + 1)) {
+                 i < numberOfInputChannels;
+                 i = channelsWithEndOfPartitionEvents.nextClearBit(i + 1)) {
                 unfinishedChannels.add(getChannel(i).getChannelInfo());
             }
         }
@@ -519,7 +522,9 @@ public class SingleInputGate extends IndexedInputGate {
         // Next allocate the exclusive buffers per channel when the number of exclusive buffer is
         // larger than 0.
         synchronized (requestLock) {
+            // 遍历 InputGate 对应的 InputChannels
             for (InputChannel inputChannel : inputChannels.values()) {
+                // 设置 InputChannel
                 inputChannel.setup();
             }
         }
@@ -541,9 +546,9 @@ public class SingleInputGate extends IndexedInputGate {
                         inputChannel.getPartitionId().getPartitionId();
                 int subpartitionIndex = inputChannel.getConsumedSubpartitionIndex();
                 if (inputChannels.put(
-                                        new SubpartitionInfo(partitionId, subpartitionIndex),
-                                        inputChannel)
-                                == null
+                        new SubpartitionInfo(partitionId, subpartitionIndex),
+                        inputChannel)
+                        == null
                         && inputChannel instanceof UnknownInputChannel) {
 
                     numberOfUninitializedChannels++;
@@ -565,8 +570,8 @@ public class SingleInputGate extends IndexedInputGate {
                     shuffleDescriptor.getResultPartitionID().getPartitionId();
 
             for (int subpartitionIndex = subpartitionIndexRange.getStartIndex();
-                    subpartitionIndex <= subpartitionIndexRange.getEndIndex();
-                    ++subpartitionIndex) {
+                 subpartitionIndex <= subpartitionIndexRange.getEndIndex();
+                 ++subpartitionIndex) {
                 SubpartitionInfo subpartitionInfo =
                         new SubpartitionInfo(partitionId, subpartitionIndex);
                 InputChannel current = inputChannels.get(subpartitionInfo);
@@ -731,6 +736,7 @@ public class SingleInputGate extends IndexedInputGate {
 
     @Override
     public Optional<BufferOrEvent> pollNext() throws IOException, InterruptedException {
+        // 拉取 buffer 或者 event
         return getNextBufferOrEvent(false);
     }
 
@@ -744,6 +750,7 @@ public class SingleInputGate extends IndexedInputGate {
             throw new CancelTaskException("Input gate is already closed.");
         }
 
+        // 阻塞等待 InputChannel 以及其可读数据
         Optional<InputWithData<InputChannel, BufferAndAvailability>> next =
                 waitAndGetNextData(blocking);
         if (!next.isPresent()) {
@@ -768,11 +775,13 @@ public class SingleInputGate extends IndexedInputGate {
             boolean blocking) throws IOException, InterruptedException {
         while (true) {
             synchronized (inputChannelsWithData) {
+                // 阻塞等待 InputChannel 有数据可读
                 Optional<InputChannel> inputChannelOpt = getChannel(blocking);
                 if (!inputChannelOpt.isPresent()) {
                     return Optional.empty();
                 }
 
+                // 获取 InputChannel 以及对应的数据
                 final InputChannel inputChannel = inputChannelOpt.get();
                 Optional<BufferAndAvailability> bufferAndAvailabilityOpt =
                         inputChannel.getNextBuffer();
@@ -800,6 +809,7 @@ public class SingleInputGate extends IndexedInputGate {
 
                 checkUnavailability();
 
+                // 封装 InputChannel 以及对应的数据为 InputWithData
                 return Optional.of(
                         new InputWithData<>(
                                 inputChannel,
@@ -952,6 +962,7 @@ public class SingleInputGate extends IndexedInputGate {
     // ------------------------------------------------------------------------
 
     void notifyChannelNonEmpty(InputChannel channel) {
+        // 将 InputChannel 加入队列 通知 StreamTask 有数据可读
         queueChannel(checkNotNull(channel), null, false);
     }
 
@@ -995,15 +1006,15 @@ public class SingleInputGate extends IndexedInputGate {
     private void queueChannel(
             InputChannel channel, @Nullable Integer prioritySequenceNumber, boolean forcePriority) {
         try (GateNotificationHelper notification =
-                new GateNotificationHelper(this, inputChannelsWithData)) {
+                     new GateNotificationHelper(this, inputChannelsWithData)) {
             synchronized (inputChannelsWithData) {
                 boolean priority = prioritySequenceNumber != null || forcePriority;
 
                 if (!forcePriority
                         && priority
                         && isOutdated(
-                                prioritySequenceNumber,
-                                lastPrioritySequenceNumber[channel.getChannelIndex()])) {
+                        prioritySequenceNumber,
+                        lastPrioritySequenceNumber[channel.getChannelIndex()])) {
                     // priority event at the given offset already polled (notification is not atomic
                     // in respect to
                     // buffer enqueuing), so just ignore the notification
@@ -1018,6 +1029,7 @@ public class SingleInputGate extends IndexedInputGate {
                     notification.notifyPriority();
                 }
                 if (inputChannelsWithData.size() == 1) {
+                    // 通知 唤醒 SingleInputGate.getChannel()
                     notification.notifyDataAvailable();
                 }
             }
@@ -1038,7 +1050,7 @@ public class SingleInputGate extends IndexedInputGate {
      * raising the priority.
      *
      * @return true iff it has been enqueued/prioritized = some change to {@link
-     *     #inputChannelsWithData} happened
+     *         #inputChannelsWithData} happened
      */
     private boolean queueChannelUnsafe(InputChannel channel, boolean priority) {
         assert Thread.holdsLock(inputChannelsWithData);
@@ -1070,6 +1082,7 @@ public class SingleInputGate extends IndexedInputGate {
             }
 
             if (blocking) {
+                // 阻塞等待 InputChannel 有数据
                 inputChannelsWithData.wait();
             } else {
                 availabilityHelper.resetUnavailable();
@@ -1077,9 +1090,11 @@ public class SingleInputGate extends IndexedInputGate {
             }
         }
 
+        // 获取一个 InputChannel
         InputChannel inputChannel = inputChannelsWithData.poll();
         enqueuedInputChannelsWithData.clear(inputChannel.getChannelIndex());
 
+        // 返回
         return Optional.of(inputChannel);
     }
 

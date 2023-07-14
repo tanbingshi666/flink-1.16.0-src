@@ -135,7 +135,10 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
             finishUnicastBufferBuilder(targetSubpartition);
         }
 
-        subpartitions[targetSubpartition].flush();
+        // ResultSubPartition
+        subpartitions[targetSubpartition]
+                // 刷写
+                .flush();
     }
 
     protected void flushAllSubpartitions(boolean finishProducers) {
@@ -196,7 +199,7 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
         finishUnicastBufferBuilders();
 
         try (BufferConsumer eventBufferConsumer =
-                EventSerializer.toBufferConsumer(event, isPriorityEvent)) {
+                     EventSerializer.toBufferConsumer(event, isPriorityEvent)) {
             totalWrittenBytes += ((long) eventBufferConsumer.getWrittenBytes() * numSubpartitions);
             for (ResultSubpartition subpartition : subpartitions) {
                 // Retain the buffer so that it can be recycled by each channel of targetPartition

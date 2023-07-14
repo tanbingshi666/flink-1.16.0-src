@@ -190,6 +190,7 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
 
     @Override
     public void flush(int targetSubpartition) {
+        // 刷写 ResultSubPartition
         flushSubpartition(targetSubpartition, false);
     }
 

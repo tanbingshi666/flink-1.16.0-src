@@ -37,6 +37,12 @@ public class StreamMap<IN, OUT> extends AbstractUdfStreamOperator<OUT, MapFuncti
 
     @Override
     public void processElement(StreamRecord<IN> element) throws Exception {
-        output.collect(element.replace(userFunction.map(element.getValue())));
+        // 输出到 output
+        // 如果当前 Map 算子下游能 chain 算子 比如 flatmap 则调用 ChainedFlatMapDriver
+        // 最终还是调用 RecordWriterOutput.collect() 将处理的数据发送给下游
+        output.collect(
+                // 用户 Map 算子逻辑处理
+                element.replace(userFunction.map(element.getValue()))
+        );
     }
 }

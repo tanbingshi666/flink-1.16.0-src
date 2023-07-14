@@ -51,7 +51,12 @@ public final class ChannelSelectorRecordWriter<T extends IOReadableWritable>
 
     @Override
     public void emit(T record) throws IOException {
-        emit(record, channelSelector.selectChannel(record));
+        // 发送 StreamRecord
+        emit(
+                record,
+                // 选择下游 Task 对应的 ResultPartition 的 ResultPartition 分区号
+                channelSelector.selectChannel(record)
+        );
     }
 
     @Override

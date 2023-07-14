@@ -62,7 +62,8 @@ import static org.apache.flink.util.Preconditions.checkState;
 @Internal
 public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamOperator<IN, OUT>> {
 
-    @Nullable private CheckpointBarrierHandler checkpointBarrierHandler;
+    @Nullable
+    private CheckpointBarrierHandler checkpointBarrierHandler;
 
     private final WatermarkGauge inputWatermarkGauge = new WatermarkGauge();
 
@@ -162,7 +163,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
                         configuration,
                         getCheckpointCoordinator(),
                         getTaskNameWithSubtaskAndId(),
-                        new List[] {Arrays.asList(inputGates)},
+                        new List[]{Arrays.asList(inputGates)},
                         Collections.emptyList(),
                         mainMailboxExecutor,
                         systemTimerService);
@@ -170,7 +171,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
         CheckpointedInputGate[] checkpointedInputGates =
                 InputProcessorUtil.createCheckpointedMultipleInputGate(
                         mainMailboxExecutor,
-                        new List[] {Arrays.asList(inputGates)},
+                        new List[]{Arrays.asList(inputGates)},
                         getEnvironment().getMetricGroup().getIOMetricGroup(),
                         checkpointBarrierHandler,
                         configuration);
@@ -230,6 +231,8 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
         public void emitRecord(StreamRecord<IN> record) throws Exception {
             numRecordsIn.inc();
             operator.setKeyContextElement(record);
+            // operator 就是 Map、Flatmap 类型的算子
+            // 比如 Map 算子 -> StreamMap
             operator.processElement(record);
         }
 

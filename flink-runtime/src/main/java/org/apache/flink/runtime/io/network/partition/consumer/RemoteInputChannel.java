@@ -551,12 +551,14 @@ public class RemoteInputChannel extends InputChannel {
 
                 wasEmpty = receivedBuffers.isEmpty();
 
+                // 封装 buffer + sequenceNumber 成 SequenceBuffer
                 SequenceBuffer sequenceBuffer = new SequenceBuffer(buffer, sequenceNumber);
                 DataType dataType = buffer.getDataType();
                 if (dataType.hasPriority()) {
                     firstPriorityEvent = addPriorityBuffer(sequenceBuffer);
                     recycleBuffer = false;
                 } else {
+                    // 添加 SequenceBuffer
                     receivedBuffers.add(sequenceBuffer);
                     recycleBuffer = false;
                     if (dataType.requiresAnnouncement()) {
@@ -564,6 +566,7 @@ public class RemoteInputChannel extends InputChannel {
                     }
                 }
                 totalQueueSizeInBytes += buffer.getSize();
+                // 判断 buffer 是否为 barrier
                 final OptionalLong barrierId =
                         channelStatePersister.checkForBarrier(sequenceBuffer.buffer);
                 if (barrierId.isPresent() && barrierId.getAsLong() > lastBarrierId) {
@@ -581,6 +584,7 @@ public class RemoteInputChannel extends InputChannel {
                 notifyPriorityEvent(sequenceNumber);
             }
             if (wasEmpty) {
+                // 通知
                 notifyChannelNonEmpty();
             }
 

@@ -106,7 +106,8 @@ public abstract class ResultPartition implements ResultPartitionWriter {
     private final SupplierWithException<BufferPool, IOException> bufferPoolFactory;
 
     /** Used to compress buffer to reduce IO. */
-    @Nullable protected final BufferCompressor bufferCompressor;
+    @Nullable
+    protected final BufferCompressor bufferCompressor;
 
     protected Counter numBytesOut = new SimpleCounter();
 
@@ -157,8 +158,13 @@ public abstract class ResultPartition implements ResultPartitionWriter {
                 this.bufferPool == null,
                 "Bug in result partition setup logic: Already registered buffer pool.");
 
+        // 获取输出缓存区 BufferPool
         this.bufferPool = checkNotNull(bufferPoolFactory.get());
+
+        // 调用 BufferWritingResultPartition.setupInternal() 啥也不干
         setupInternal();
+
+        // 注册 ResultPartition
         partitionManager.registerResultPartition(this);
     }
 
@@ -225,10 +231,12 @@ public abstract class ResultPartition implements ResultPartitionWriter {
      * The subpartition notifies that the corresponding downstream task have processed all the user
      * records.
      *
-     * @see EndOfData
      * @param subpartition The index of the subpartition sending the notification.
+     *
+     * @see EndOfData
      */
-    public void onSubpartitionAllDataProcessed(int subpartition) {}
+    public void onSubpartitionAllDataProcessed(int subpartition) {
+    }
 
     /**
      * Finishes the result partition.

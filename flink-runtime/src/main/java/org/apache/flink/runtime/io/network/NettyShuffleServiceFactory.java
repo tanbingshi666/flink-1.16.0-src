@@ -70,12 +70,15 @@ public class NettyShuffleServiceFactory
     public NettyShuffleEnvironment createShuffleEnvironment(
             ShuffleEnvironmentContext shuffleEnvironmentContext) {
         checkNotNull(shuffleEnvironmentContext);
+        // 创建 netty shuffle 环境配置
         NettyShuffleEnvironmentConfiguration networkConfig =
                 NettyShuffleEnvironmentConfiguration.fromConfiguration(
                         shuffleEnvironmentContext.getConfiguration(),
                         shuffleEnvironmentContext.getNetworkMemorySize(),
                         shuffleEnvironmentContext.isLocalCommunicationOnly(),
                         shuffleEnvironmentContext.getHostAddress());
+
+        // 创建 netty shuffle 环境
         return createNettyShuffleEnvironment(
                 networkConfig,
                 shuffleEnvironmentContext.getTaskExecutorResourceId(),
@@ -95,6 +98,7 @@ public class NettyShuffleServiceFactory
             Executor ioExecutor,
             int numberOfSlots,
             String[] tmpDirPaths) {
+        // 往下追
         return createNettyShuffleEnvironment(
                 config,
                 taskExecutorResourceId,
@@ -117,15 +121,18 @@ public class NettyShuffleServiceFactory
             int numberOfSlots,
             String[] tmpDirPaths) {
         NettyConfig nettyConfig = config.nettyConfig();
+        // 创建 NettyConnectionManager
+        // 在创建 NettyConnectionManager 过程中创建 netty server 和 netty client
         ConnectionManager connectionManager =
                 nettyConfig != null
                         ? new NettyConnectionManager(
-                                resultPartitionManager,
-                                taskEventPublisher,
-                                nettyConfig,
-                                config.getMaxNumberOfConnections(),
-                                config.isConnectionReuseEnabled())
+                        resultPartitionManager,
+                        taskEventPublisher,
+                        nettyConfig,
+                        config.getMaxNumberOfConnections(),
+                        config.isConnectionReuseEnabled())
                         : new LocalConnectionManager();
+        // 创建 netty shuffle 环境
         return createNettyShuffleEnvironment(
                 config,
                 taskExecutorResourceId,
@@ -156,6 +163,7 @@ public class NettyShuffleServiceFactory
         checkNotNull(metricGroup);
         checkNotNull(connectionManager);
 
+        // 创建 FileChannelManagerImpl
         FileChannelManager fileChannelManager =
                 new FileChannelManagerImpl(config.getTempDirs(), DIR_NAME_PREFIX);
         if (LOG.isInfoEnabled()) {
@@ -167,6 +175,7 @@ public class NettyShuffleServiceFactory
                             .collect(Collectors.joining("\n\t")));
         }
 
+        // 创建 NetworkBufferPool
         NetworkBufferPool networkBufferPool =
                 new NetworkBufferPool(
                         config.numNetworkBuffers(),
@@ -176,6 +185,7 @@ public class NettyShuffleServiceFactory
         // we create a separated buffer pool here for batch shuffle instead of reusing the network
         // buffer pool directly to avoid potential side effects of memory contention, for example,
         // dead lock or "insufficient network buffer" error
+        // 创建 BatchShuffleReadBufferPool
         BatchShuffleReadBufferPool batchShuffleReadBufferPool =
                 new BatchShuffleReadBufferPool(
                         config.batchShuffleReadMemoryBytes(), config.networkBufferSize());
@@ -194,6 +204,7 @@ public class NettyShuffleServiceFactory
 
         registerShuffleMetrics(metricGroup, networkBufferPool);
 
+        // 创建 ResultPartitionFactory
         ResultPartitionFactory resultPartitionFactory =
                 new ResultPartitionFactory(
                         resultPartitionManager,
@@ -213,6 +224,7 @@ public class NettyShuffleServiceFactory
                         config.isSSLEnabled(),
                         config.getMaxOverdraftBuffersPerGate());
 
+        // 创建 SingleInputGateFactory
         SingleInputGateFactory singleInputGateFactory =
                 new SingleInputGateFactory(
                         taskExecutorResourceId,
@@ -222,6 +234,7 @@ public class NettyShuffleServiceFactory
                         taskEventPublisher,
                         networkBufferPool);
 
+        // 创建 NettyShuffleEnvironment
         return new NettyShuffleEnvironment(
                 taskExecutorResourceId,
                 config,

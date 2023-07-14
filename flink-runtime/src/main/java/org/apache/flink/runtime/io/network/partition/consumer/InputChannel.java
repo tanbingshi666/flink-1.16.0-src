@@ -161,6 +161,7 @@ public abstract class InputChannel {
      * will always be notified about the exception.
      */
     protected void notifyChannelNonEmpty() {
+        // 通知
         inputGate.notifyChannelNonEmpty(this);
     }
 

@@ -689,6 +689,7 @@ public class PipelinedSubpartition extends ResultSubpartition
             flushRequested = buffers.size() > 1 || isDataAvailableInUnfinishedBuffer;
         }
         if (notifyDataAvailable) {
+            // 通知有数据可用
             notifyDataAvailable();
         }
     }
@@ -764,6 +765,7 @@ public class PipelinedSubpartition extends ResultSubpartition
     private void notifyDataAvailable() {
         final PipelinedSubpartitionView readView = this.readView;
         if (readView != null) {
+            // 调用 PipelinedSubpartitionView.notifyDataAvailable()
             readView.notifyDataAvailable();
         }
     }

@@ -136,6 +136,7 @@ public class MailboxProcessor implements Closeable {
             MailboxMetricsController mailboxMetricsControl) {
         this.mailboxDefaultAction = Preconditions.checkNotNull(mailboxDefaultAction);
         this.actionExecutor = Preconditions.checkNotNull(actionExecutor);
+        // TaskMailboxImpl
         this.mailbox = Preconditions.checkNotNull(mailbox);
         this.mailboxLoopRunning = true;
         this.suspendedDefaultAction = null;
@@ -143,6 +144,7 @@ public class MailboxProcessor implements Closeable {
     }
 
     public MailboxExecutor getMainMailboxExecutor() {
+        // 创建 MailboxExecutorImpl
         return new MailboxExecutorImpl(mailbox, MIN_PRIORITY, actionExecutor);
     }
 
@@ -214,20 +216,27 @@ public class MailboxProcessor implements Closeable {
     public void runMailboxLoop() throws Exception {
         suspended = !mailboxLoopRunning;
 
+        // TaskMailboxImpl
         final TaskMailbox localMailbox = mailbox;
 
         checkState(
                 localMailbox.isMailboxThread(),
                 "Method must be executed by declared mailbox thread!");
-
         assert localMailbox.getState() == TaskMailbox.State.OPEN : "Mailbox must be opened!";
 
+        // 创建 MailboxController
         final MailboxController mailboxController = new MailboxController(this);
 
+        // 一般情况下 任务正常运行 isNextLoopPossible() = true
         while (isNextLoopPossible()) {
             // The blocking `processMail` call will not return until default action is available.
+            // 1 处理 mail
             processMail(localMailbox, false);
+
             if (isNextLoopPossible()) {
+                // 2 获取 mail
+                // mailboxDefaultAction = StreamTask.processInput()
+                // 但是具体调用还是 SourceStreamTask 或者 OneInputStreamTask
                 mailboxDefaultAction.runDefaultAction(
                         mailboxController); // lock is acquired inside default action as needed
             }
@@ -342,7 +351,9 @@ public class MailboxProcessor implements Closeable {
         boolean isBatchAvailable = mailbox.createBatch();
 
         // Take mails in a non-blockingly and execute them.
-        boolean processed = isBatchAvailable && processMailsNonBlocking(singleStep);
+        boolean processed = isBatchAvailable &&
+                // 非阻塞处理 mail
+                processMailsNonBlocking(singleStep);
         if (singleStep) {
             return processed;
         }
@@ -492,7 +503,8 @@ public class MailboxProcessor implements Closeable {
      * resume execution.
      */
     private final class DefaultActionSuspension implements MailboxDefaultAction.Suspension {
-        @Nullable private final PeriodTimer suspensionTimer;
+        @Nullable
+        private final PeriodTimer suspensionTimer;
 
         public DefaultActionSuspension(@Nullable PeriodTimer suspensionTimer) {
             this.suspensionTimer = suspensionTimer;

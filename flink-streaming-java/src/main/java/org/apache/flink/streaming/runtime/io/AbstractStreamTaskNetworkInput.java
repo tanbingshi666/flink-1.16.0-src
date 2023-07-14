@@ -48,7 +48,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  * RecordDeserializer}.
  */
 public abstract class AbstractStreamTaskNetworkInput<
-                T, R extends RecordDeserializer<DeserializationDelegate<StreamElement>>>
+        T, R extends RecordDeserializer<DeserializationDelegate<StreamElement>>>
         implements StreamTaskInput<T> {
     protected final CheckpointedInputGate checkpointedInputGate;
     protected final DeserializationDelegate<StreamElement> deserializationDelegate;
@@ -92,6 +92,7 @@ public abstract class AbstractStreamTaskNetworkInput<
             if (currentRecordDeserializer != null) {
                 RecordDeserializer.DeserializationResult result;
                 try {
+                    // 从缓存拉取数据
                     result = currentRecordDeserializer.getNextRecord(deserializationDelegate);
                 } catch (IOException e) {
                     throw new IOException(
@@ -102,17 +103,20 @@ public abstract class AbstractStreamTaskNetworkInput<
                 }
 
                 if (result.isFullRecord()) {
+                    // 处理数据
                     processElement(deserializationDelegate.getInstance(), output);
                     return DataInputStatus.MORE_AVAILABLE;
                 }
             }
 
+            // 获取上游发送数据
             Optional<BufferOrEvent> bufferOrEvent = checkpointedInputGate.pollNext();
             if (bufferOrEvent.isPresent()) {
                 // return to the mailbox after receiving a checkpoint barrier to avoid processing of
                 // data after the barrier before checkpoint is performed for unaligned checkpoint
                 // mode
                 if (bufferOrEvent.get().isBuffer()) {
+                    // 缓存 buffer 等待处理
                     processBuffer(bufferOrEvent.get());
                 } else {
                     return processEvent(bufferOrEvent.get());
@@ -130,9 +134,13 @@ public abstract class AbstractStreamTaskNetworkInput<
     }
 
     private void processElement(StreamElement recordOrMark, DataOutput<T> output) throws Exception {
+        // 如果是正常的输入完成数据
         if (recordOrMark.isRecord()) {
+            // 处理正常数据逻辑 比如 Map FlatMap 算子
+            // 调用 OneInputStreamTask.emitRecord()
             output.emitRecord(recordOrMark.asRecord());
         } else if (recordOrMark.isWatermark()) {
+            // 输入数据的 watermark
             statusWatermarkValve.inputWatermark(
                     recordOrMark.asWatermark(), flattenedChannelIndices.get(lastChannel), output);
         } else if (recordOrMark.isLatencyMarker()) {

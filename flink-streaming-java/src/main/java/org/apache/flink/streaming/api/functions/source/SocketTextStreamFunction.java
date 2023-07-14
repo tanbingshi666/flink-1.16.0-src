@@ -97,11 +97,14 @@ public class SocketTextStreamFunction implements SourceFunction<String> {
 
         while (isRunning) {
 
+            // 1 创建 Socket
             try (Socket socket = new Socket()) {
                 currentSocket = socket;
 
                 LOG.info("Connecting to server socket " + hostname + ':' + port);
+                // 2 连接 SocketServer
                 socket.connect(new InetSocketAddress(hostname, port), CONNECTION_TIMEOUT_TIME);
+                // 3 读取 Socket 数据
                 try (BufferedReader reader =
                         new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
@@ -117,6 +120,7 @@ public class SocketTextStreamFunction implements SourceFunction<String> {
                             if (delimiter.equals("\n") && record.endsWith("\r")) {
                                 record = record.substring(0, record.length() - 1);
                             }
+                            // 4 输出数据
                             ctx.collect(record);
                             buffer.delete(0, delimPos + delimiter.length());
                         }

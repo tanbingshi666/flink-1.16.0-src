@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Internal
 public class SourceStreamTask<
-                OUT, SRC extends SourceFunction<OUT>, OP extends StreamSource<OUT, SRC>>
+        OUT, SRC extends SourceFunction<OUT>, OP extends StreamSource<OUT, SRC>>
         extends StreamTask<OUT, OP> {
 
     private final LegacySourceFunctionThread sourceThread;
@@ -96,17 +96,22 @@ public class SourceStreamTask<
      */
     private volatile FinishingReason finishingReason = FinishingReason.END_OF_DATA;
 
+    // 创建 SourceStreamTask
     public SourceStreamTask(Environment env) throws Exception {
+        // 往下追
         this(env, new Object());
     }
 
     private SourceStreamTask(Environment env, Object lock) throws Exception {
+        // 往下追
         super(
                 env,
                 null,
                 FatalExitExceptionHandler.INSTANCE,
                 StreamTaskActionExecutor.synchronizedExecutor(lock));
         this.lock = Preconditions.checkNotNull(lock);
+
+        // 创建线程 LegacySourceFunctionThread 读取 Source 数据
         this.sourceThread = new LegacySourceFunctionThread();
 
         getEnvironment().getMetricGroup().getIOMetricGroup().setEnableBusyTime(false);
@@ -188,6 +193,7 @@ public class SourceStreamTask<
         // not in steps).
         sourceThread.setTaskDescription(getName());
 
+        // 启动 Source 线程
         sourceThread.start();
 
         sourceThread
@@ -330,15 +336,18 @@ public class SourceStreamTask<
                     LOG.debug(
                             "Legacy source {} skip execution since the task is finished on restore",
                             getTaskNameWithSubtaskAndId());
+                    // mainOperator 就是 Source 算子
+                    // 一般情况下在里面就阻塞啦
                     mainOperator.run(lock, operatorChain);
                 }
+                // 任务完成后续处理
                 completeProcessing();
                 completionFuture.complete(null);
             } catch (Throwable t) {
                 // Note, t can be also an InterruptedException
                 if (isCanceled()
                         && ExceptionUtils.findThrowable(t, InterruptedException.class)
-                                .isPresent()) {
+                        .isPresent()) {
                     completionFuture.completeExceptionally(new CancelTaskException(t));
                 } else {
                     completionFuture.completeExceptionally(t);
@@ -370,8 +379,8 @@ public class SourceStreamTask<
 
         /**
          * @return future that is completed once this thread completes. If this task {@link
-         *     #isFailing()} and this thread is not alive (e.g. not started) returns a normally
-         *     completed future.
+         *         #isFailing()} and this thread is not alive (e.g. not started) returns a normally
+         *         completed future.
          */
         CompletableFuture<Void> getCompletionFuture() {
             return isFailing() && !isAlive()

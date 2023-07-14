@@ -48,6 +48,7 @@ public class NettyConnectionManager implements ConnectionManager {
             int maxNumberOfConnections,
             boolean connectionReuseEnabled) {
 
+        // 往下追
         this(
                 new NettyBufferPool(nettyConfig.getNumberOfArenas()),
                 partitionProvider,
@@ -66,7 +67,9 @@ public class NettyConnectionManager implements ConnectionManager {
             int maxNumberOfConnections,
             boolean connectionReuseEnabled) {
 
+        // 创建 NettyServer
         this.server = new NettyServer(nettyConfig);
+        // 创建 NettyClient
         this.client = new NettyClient(nettyConfig);
         this.bufferPool = checkNotNull(bufferPool);
 
@@ -77,6 +80,7 @@ public class NettyConnectionManager implements ConnectionManager {
                         maxNumberOfConnections,
                         connectionReuseEnabled);
 
+        // 创建 NettyProtocol
         this.nettyProtocol =
                 new NettyProtocol(
                         checkNotNull(partitionProvider), checkNotNull(taskEventPublisher));

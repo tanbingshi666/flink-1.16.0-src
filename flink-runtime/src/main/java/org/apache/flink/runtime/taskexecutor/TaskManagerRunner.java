@@ -168,6 +168,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
             throws Exception {
         this.configuration = checkNotNull(configuration);
         this.pluginManager = checkNotNull(pluginManager);
+        // TaskManagerRunner.createTaskExecutorService()
         this.taskExecutorServiceFactory = checkNotNull(taskExecutorServiceFactory);
 
         timeout = Time.fromDuration(configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION));
@@ -203,13 +204,15 @@ public class TaskManagerRunner implements FatalErrorHandler {
 
             JMXService.startInstance(configuration.getString(JMXServerOptions.JMX_SERVER_PORT));
 
-            // 创建 Actor RPC Actor
+            // 创建 Actor RpcService 也即 ActorSystem
             rpcService = createRpcService(configuration, highAvailabilityServices, rpcSystem);
 
+            // 创建 ResourceID
             this.resourceId =
                     getTaskManagerResourceID(
                             configuration, rpcService.getAddress(), rpcService.getPort());
 
+            // TM 工作目录
             this.workingDirectory =
                     ClusterEntrypointUtils.createTaskManagerWorkingDirectory(
                             configuration, resourceId);
@@ -609,13 +612,16 @@ public class TaskManagerRunner implements FatalErrorHandler {
         checkNotNull(rpcService);
         checkNotNull(highAvailabilityServices);
 
+        // Starting TaskManager with ResourceID: container_1688708321118_0001_01_000002(node3:33067)
         LOG.info("Starting TaskManager with ResourceID: {}", resourceID.getStringWithMetadata());
 
         String externalAddress = rpcService.getAddress();
 
+        // TM 资源配置 (内存 + CPU)
         final TaskExecutorResourceSpec taskExecutorResourceSpec =
                 TaskExecutorResourceUtils.resourceSpecFromConfig(configuration);
 
+        // TM 配置参数
         TaskManagerServicesConfiguration taskManagerServicesConfiguration =
                 TaskManagerServicesConfiguration.fromConfiguration(
                         configuration,
@@ -632,11 +638,13 @@ public class TaskManagerRunner implements FatalErrorHandler {
                         resourceID,
                         taskManagerServicesConfiguration.getSystemResourceMetricsProbingInterval());
 
+        // 创建 IO 线程池
         final ExecutorService ioExecutor =
                 Executors.newFixedThreadPool(
                         taskManagerServicesConfiguration.getNumIoThreads(),
                         new ExecutorThreadFactory("flink-taskexecutor-io"));
 
+        // 创建 TM 服务 TaskManagerServices
         TaskManagerServices taskManagerServices =
                 TaskManagerServices.fromConfiguration(
                         taskManagerServicesConfiguration,

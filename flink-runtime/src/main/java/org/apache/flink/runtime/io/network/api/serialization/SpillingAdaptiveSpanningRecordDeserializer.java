@@ -89,17 +89,19 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
         // always check the non-spanning wrapper first.
         // this should be the majority of the cases for small records
         // for large records, this portion of the work is very small in comparison anyways
-
+        // 读取输入数据并反序列化
         final DeserializationResult result = readNextRecord(target);
         if (result.isBufferConsumed()) {
             currentBuffer.recycleBuffer();
             currentBuffer = null;
         }
+        // 返回数据
         return result;
     }
 
     private DeserializationResult readNextRecord(T target) throws IOException {
         if (nonSpanningWrapper.hasCompleteLength()) {
+            // 往下追
             return readNonSpanningRecord(target);
 
         } else if (nonSpanningWrapper.hasRemaining()) {

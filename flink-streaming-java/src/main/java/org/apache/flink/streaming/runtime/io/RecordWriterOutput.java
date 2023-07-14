@@ -88,6 +88,7 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
             return;
         }
 
+        // 推送数据给下游
         pushToRecordWriter(record);
     }
 
@@ -99,9 +100,12 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
     }
 
     private <X> void pushToRecordWriter(StreamRecord<X> record) {
+        // 序列化 StreamRecord
         serializationDelegate.setInstance(record);
 
         try {
+            // 发射序列化后的 StreamRecord
+            // 调用 ChannelSelectorRecordWriter.emit()
             recordWriter.emit(serializationDelegate);
         } catch (IOException e) {
             throw new UncheckedIOException(e.getMessage(), e);

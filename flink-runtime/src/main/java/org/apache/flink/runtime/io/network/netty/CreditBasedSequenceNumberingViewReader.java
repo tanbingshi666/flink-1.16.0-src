@@ -226,6 +226,7 @@ class CreditBasedSequenceNumberingViewReader
 
     @Override
     public void notifyDataAvailable() {
+        // 触发 netty server 发送数据给下游
         requestQueue.notifyReaderNonEmpty(this);
     }
 
