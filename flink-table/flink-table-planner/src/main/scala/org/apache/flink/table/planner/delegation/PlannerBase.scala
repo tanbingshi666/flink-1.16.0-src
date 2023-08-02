@@ -74,27 +74,27 @@ import scala.collection.mutable
  * streaming sources, and no batch specific optimizations will be applied).
  *
  * @param executor
- *   instance of [[Executor]], needed to extract [[StreamExecutionEnvironment]] for
- *   [[org.apache.flink.table.sources.StreamTableSource.getDataStream]]
+ * instance of [[Executor]], needed to extract [[StreamExecutionEnvironment]] for
+ * [[org.apache.flink.table.sources.StreamTableSource.getDataStream]]
  * @param tableConfig
- *   mutable configuration passed from corresponding [[TableEnvironment]]
+ * mutable configuration passed from corresponding [[TableEnvironment]]
  * @param moduleManager
- *   manager for modules
+ * manager for modules
  * @param functionCatalog
- *   catalog of functions
+ * catalog of functions
  * @param catalogManager
- *   manager of catalog meta objects such as tables, views, databases etc.
+ * manager of catalog meta objects such as tables, views, databases etc.
  * @param isStreamingMode
- *   Determines if the planner should work in a batch (false}) or streaming (true) mode.
+ * Determines if the planner should work in a batch (false}) or streaming (true) mode.
  */
 abstract class PlannerBase(
-    executor: Executor,
-    tableConfig: TableConfig,
-    val moduleManager: ModuleManager,
-    val functionCatalog: FunctionCatalog,
-    val catalogManager: CatalogManager,
-    isStreamingMode: Boolean,
-    classLoader: ClassLoader)
+                            executor: Executor,
+                            tableConfig: TableConfig,
+                            val moduleManager: ModuleManager,
+                            val functionCatalog: FunctionCatalog,
+                            val catalogManager: CatalogManager,
+                            isStreamingMode: Boolean,
+                            classLoader: ClassLoader)
   extends Planner {
 
   // temporary utility until we don't use planner expressions anymore
@@ -142,10 +142,10 @@ abstract class PlannerBase(
 
   /**
    * @deprecated
-   *   Do not use this method anymore. Use [[getTableConfig]] to access options. Create
-   *   transformations without it. A [[StreamExecutionEnvironment]] is a mixture of executor and
-   *   stream graph generator/builder. In the long term, we would like to avoid the need for it in
-   *   the planner module.
+   * Do not use this method anymore. Use [[getTableConfig]] to access options. Create
+   * transformations without it. A [[StreamExecutionEnvironment]] is a mixture of executor and
+   * stream graph generator/builder. In the long term, we would like to avoid the need for it in
+   * the planner module.
    */
   @deprecated
   private[flink] def getExecEnv: StreamExecutionEnvironment = {
@@ -185,17 +185,23 @@ abstract class PlannerBase(
   }
 
   override def translate(
-      modifyOperations: util.List[ModifyOperation]): util.List[Transformation[_]] = {
+                          modifyOperations: util.List[ModifyOperation]): util.List[Transformation[_]] = {
     beforeTranslation()
     if (modifyOperations.isEmpty) {
       return List.empty[Transformation[_]]
     }
 
+    // 1 遍历 Operations 执行 translateToRel() 函数
+    // 如果是 INSERT INTO 一般返回 LogicalSink
     val relNodes = modifyOperations.map(translateToRel)
+    // 2 优化 RelNode
     val optimizedRelNodes = optimize(relNodes)
+    // 3 将优化后的 RelNode 转化为 ExecNodeGraph
     val execGraph = translateToExecNodeGraph(optimizedRelNodes, isCompiled = false)
+    // 4 将 ExecNodeGraph 转化为 Transformations
     val transformations = translateToPlan(execGraph)
     afterTranslation()
+    // 5 返回 Transformations
     transformations
   }
 
@@ -230,9 +236,14 @@ abstract class PlannerBase(
           getFlinkContext.getClassLoader
         )
 
+      // INSERT INTO 语句
       case catalogSink: SinkModifyOperation =>
+        // 1 获取 SQL 输入表 RelNode
         val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+        // 2 获取 Sink 动态配置选项
         val dynamicOptions = catalogSink.getDynamicOptions
+        // 3 获取 Sink Table
+        // 也就根据 Table Sink 的 Connector 获取对应的 Table
         getTableSink(catalogSink.getContextResolvedTable, dynamicOptions).map {
           case (table, sink: TableSink[_]) =>
             // Legacy tables can't be anonymous
@@ -262,6 +273,7 @@ abstract class PlannerBase(
               table,
               catalogSink.getStaticPartitions.toMap)
 
+          // 4 将 Table Sink 转化为 RelNode (LogicalSink)
           case (table, sink: DynamicTableSink) =>
             DynamicSinkUtils.convertSinkToRel(createRelBuilder, input, catalogSink, sink)
         } match {
@@ -330,8 +342,8 @@ abstract class PlannerBase(
    */
   @VisibleForTesting
   private[flink] def translateToExecNodeGraph(
-      optimizedRelNodes: Seq[RelNode],
-      isCompiled: Boolean): ExecNodeGraph = {
+                                               optimizedRelNodes: Seq[RelNode],
+                                               isCompiled: Boolean): ExecNodeGraph = {
     val nonPhysicalRel = optimizedRelNodes.filterNot(_.isInstanceOf[FlinkPhysicalRel])
     if (nonPhysicalRel.nonEmpty) {
       throw new TableException(
@@ -358,9 +370,9 @@ abstract class PlannerBase(
    * Translates an [[ExecNodeGraph]] into a [[Transformation]] DAG.
    *
    * @param execGraph
-   *   The node graph to translate.
+   * The node graph to translate.
    * @return
-   *   The [[Transformation]] DAG that corresponds to the node DAG.
+   * The [[Transformation]] DAG that corresponds to the node DAG.
    */
   protected def translateToPlan(execGraph: ExecNodeGraph): util.List[Transformation[_]]
 
@@ -371,8 +383,8 @@ abstract class PlannerBase(
   }
 
   private def getTableSink(
-      contextResolvedTable: ContextResolvedTable,
-      dynamicOptions: JMap[String, String]): Option[(ResolvedCatalogTable, Any)] = {
+                            contextResolvedTable: ContextResolvedTable,
+                            dynamicOptions: JMap[String, String]): Option[(ResolvedCatalogTable, Any)] = {
     contextResolvedTable.getTable[CatalogBaseTable] match {
       case connectorTable: ConnectorCatalogTable[_, _] =>
         val resolvedTable = contextResolvedTable.getResolvedTable[ResolvedCatalogTable]
@@ -381,6 +393,7 @@ abstract class PlannerBase(
           case None => None
         }
 
+      // 1 一般都是正常的 Table
       case regularTable: CatalogTable =>
         val resolvedTable = contextResolvedTable.getResolvedTable[ResolvedCatalogTable]
         val tableToFind = if (dynamicOptions.nonEmpty) {
@@ -394,7 +407,7 @@ abstract class PlannerBase(
 
         if (
           isStreamingMode && isManagedTable(catalog.orNull, resolvedTable) &&
-          !executor.isCheckpointingEnabled
+            !executor.isCheckpointingEnabled
         ) {
           throw new TableException(
             s"You should enable the checkpointing for sinking to managed table " +
@@ -402,16 +415,17 @@ abstract class PlannerBase(
               s"the data is visible only after commit.")
         }
 
+        // 2 判断是否存在老的 connector 选项 兼容性问题
         if (
           !contextResolvedTable.isAnonymous &&
-          TableFactoryUtil.isLegacyConnectorOptions(
-            catalogManager.getCatalog(objectIdentifier.getCatalogName).orElse(null),
-            tableConfig,
-            isStreamingMode,
-            objectIdentifier,
-            resolvedTable.getOrigin,
-            isTemporary
-          )
+            TableFactoryUtil.isLegacyConnectorOptions(
+              catalogManager.getCatalog(objectIdentifier.getCatalogName).orElse(null),
+              tableConfig,
+              isStreamingMode,
+              objectIdentifier,
+              resolvedTable.getOrigin,
+              isTemporary
+            )
         ) {
           val tableSink = TableFactoryUtil.findAndCreateTableSink(
             catalog.orNull,
@@ -422,6 +436,7 @@ abstract class PlannerBase(
             isTemporary)
           Option(resolvedTable, tableSink)
         } else {
+          // 3 正常情况下
           val factoryFromCatalog = catalog.flatMap(f => toScala(f.getFactory)) match {
             case Some(f: DynamicTableSinkFactory) => Some(f)
             case _ => None
@@ -435,6 +450,8 @@ abstract class PlannerBase(
           // any modules.
           val factory = factoryFromCatalog.orElse(factoryFromModule).orNull
 
+          // 4 创建动态表 Sink
+          //  比如指定了 connector = print -> PrintSink
           val tableSink = FactoryUtil.createDynamicTableSink(
             factory,
             objectIdentifier,
@@ -497,7 +514,7 @@ abstract class PlannerBase(
 
   /** Returns all the graphs required to execute EXPLAIN */
   private[flink] def getExplainGraphs(operations: util.List[Operation])
-      : (mutable.Buffer[RelNode], Seq[RelNode], ExecNodeGraph, StreamGraph) = {
+  : (mutable.Buffer[RelNode], Seq[RelNode], ExecNodeGraph, StreamGraph) = {
     require(operations.nonEmpty, "operations should not be empty")
     beforeTranslation()
     val sinkRelNodes = operations.map {

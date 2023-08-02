@@ -90,6 +90,7 @@ public interface TableEnvironment {
      * @param settings The environment settings used to instantiate the {@link TableEnvironment}.
      */
     static TableEnvironment create(EnvironmentSettings settings) {
+        // 创建 TableEnvironment
         return TableEnvironmentImpl.create(settings);
     }
 

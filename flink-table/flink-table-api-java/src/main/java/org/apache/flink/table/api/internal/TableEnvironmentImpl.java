@@ -270,37 +270,49 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     }
 
     public static TableEnvironmentImpl create(EnvironmentSettings settings) {
+        // 1 用户类加载器
         final MutableURLClassLoader userClassLoader =
                 FlinkUserCodeClassLoaders.create(
                         new URL[0], settings.getUserClassLoader(), settings.getConfiguration());
 
+        // 2 寻找执行器工厂 默认 DefaultExecutorFactory
         final ExecutorFactory executorFactory =
                 FactoryUtil.discoverFactory(
                         userClassLoader, ExecutorFactory.class, ExecutorFactory.DEFAULT_IDENTIFIER);
+        // 3 创建执行器 DefaultExecutor (里面封装了 Flink DataStream 的执行环境 StreamExecutionEnvironment)
         final Executor executor = executorFactory.create(settings.getConfiguration());
 
         // use configuration to init table config
+        // 4 初始化表配置 TableConfig
         final TableConfig tableConfig = TableConfig.getDefault();
         tableConfig.setRootConfiguration(executor.getConfiguration());
         tableConfig.addConfiguration(settings.getConfiguration());
 
+        // 5 处理用户定义资源 (jar file) 管理
         final ResourceManager resourceManager =
                 new ResourceManager(settings.getConfiguration(), userClassLoader);
+        // 6 模块管理
         final ModuleManager moduleManager = new ModuleManager();
+        // 7 catalog 管理 (默认基于内存)
         final CatalogManager catalogManager =
                 CatalogManager.newBuilder()
                         .classLoader(userClassLoader)
                         .config(tableConfig)
                         .defaultCatalog(
                                 settings.getBuiltInCatalogName(),
+                                // 7.1 内存管理 catalog
                                 new GenericInMemoryCatalog(
                                         settings.getBuiltInCatalogName(),
                                         settings.getBuiltInDatabaseName()))
                         .build();
 
+        // 8 函数 catalog
         final FunctionCatalog functionCatalog =
                 new FunctionCatalog(tableConfig, resourceManager, catalogManager, moduleManager);
 
+        // 9 创建计划器
+        // 如果是 STREAMING -> StreamPlanner
+        // 否则 BATCH -> BatchPlanner
         final Planner planner =
                 PlannerFactoryUtil.createPlanner(
                         executor,
@@ -310,6 +322,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                         catalogManager,
                         functionCatalog);
 
+        // 10 创建表环境 TableEnvironmentImpl
         return new TableEnvironmentImpl(
                 catalogManager,
                 moduleManager,
@@ -720,13 +733,24 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
 
     @Override
     public TableResult executeSql(String statement) {
-        List<Operation> operations = getParser().parse(statement);
+        // 1 解析 SQL
+        List<Operation> operations =
+                // 1.1 获取解析器
+                // 默认 ParserImpl
+                // 如果基于 Hive 则 HiveParser
+                getParser()
+                        // 1.2 执行解析 SQL
+                        .parse(statement);
 
         if (operations.size() != 1) {
             throw new TableException(UNSUPPORTED_QUERY_IN_EXECUTE_SQL_MSG);
         }
 
+        // 2 如果是 CREATE TABLE 则返回 CreateTableOperation
+        // 如果是 INSERT INTO 则返回 SinkModifyOperation
         Operation operation = operations.get(0);
+
+        // 3 执行
         return executeInternal(operation);
     }
 
@@ -811,6 +835,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     @Override
     public TableResultInternal executeInternal(List<ModifyOperation> operations) {
         List<ModifyOperation> mapOperations = new ArrayList<>();
+        // 1 如果是 CREATE TABLE xxx AS SELECT * FROM YYY
         for (ModifyOperation modify : operations) {
             // execute CREATE TABLE first for CTAS statements
             if (modify instanceof CreateTableASOperation) {
@@ -818,12 +843,16 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                 executeInternal(ctasOperation.getCreateTableOperation());
                 mapOperations.add(ctasOperation.toSinkModifyOperation(catalogManager));
             } else {
+                // 2 一般情况下 INSERT INTO 语句
                 mapOperations.add(modify);
             }
         }
 
+        // 3 基于 SQL 语句转化 Transformation
         List<Transformation<?>> transformations = translate(mapOperations);
         List<String> sinkIdentifierNames = extractSinkIdentifierNames(mapOperations);
+
+        // 4 将 Transformations 转化 StreamNode 后续过程跟 Flink DataStream API 相同
         TableResultInternal result = executeInternal(transformations, sinkIdentifierNames);
         if (tableConfig.get(TABLE_DML_SYNC)) {
             try {
@@ -915,10 +944,12 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         }
         // otherwise, fall back to internal implementation
         if (operation instanceof ModifyOperation) {
+            // 2 如果是 INSERT INTO 强制转化为 SinkModifyOperation
             return executeInternal(Collections.singletonList((ModifyOperation) operation));
         } else if (operation instanceof StatementSetOperation) {
             return executeInternal(((StatementSetOperation) operation).getOperations());
         } else if (operation instanceof CreateTableOperation) {
+            // 1 如果是 CREATE TABLE 强转为 CreateTableOperation
             CreateTableOperation createTableOperation = (CreateTableOperation) operation;
             if (createTableOperation.isTemporary()) {
                 catalogManager.createTemporaryTable(
@@ -926,6 +957,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                         createTableOperation.getTableIdentifier(),
                         createTableOperation.isIgnoreIfExists());
             } else {
+                // 2 创建表
                 catalogManager.createTable(
                         createTableOperation.getCatalogTable(),
                         createTableOperation.getTableIdentifier(),
@@ -1251,12 +1283,12 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                     .build();
         } else if (operation instanceof ShowCurrentCatalogOperation) {
             return buildShowResult(
-                    "current catalog name", new String[] {catalogManager.getCurrentCatalog()});
+                    "current catalog name", new String[]{catalogManager.getCurrentCatalog()});
         } else if (operation instanceof ShowDatabasesOperation) {
             return buildShowResult("database name", listDatabases());
         } else if (operation instanceof ShowCurrentDatabaseOperation) {
             return buildShowResult(
-                    "current database name", new String[] {catalogManager.getCurrentDatabase()});
+                    "current database name", new String[]{catalogManager.getCurrentDatabase()});
         } else if (operation instanceof ShowModulesOperation) {
             ShowModulesOperation showModulesOperation = (ShowModulesOperation) operation;
             if (showModulesOperation.requireFull()) {
@@ -1476,9 +1508,9 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
 
     private TableResultInternal buildShowResult(String columnName, String[] objects) {
         return buildResult(
-                new String[] {columnName},
-                new DataType[] {DataTypes.STRING()},
-                Arrays.stream(objects).map((c) -> new String[] {c}).toArray(String[][]::new));
+                new String[]{columnName},
+                new DataType[]{DataTypes.STRING()},
+                Arrays.stream(objects).map((c) -> new String[]{c}).toArray(String[][]::new));
     }
 
     private TableResultInternal buildDescribeResult(ResolvedSchema schema) {
@@ -1487,18 +1519,18 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     }
 
     private DataType[] generateTableColumnsDataTypes() {
-        return new DataType[] {
-            DataTypes.STRING(),
-            DataTypes.STRING(),
-            DataTypes.BOOLEAN(),
-            DataTypes.STRING(),
-            DataTypes.STRING(),
-            DataTypes.STRING()
+        return new DataType[]{
+                DataTypes.STRING(),
+                DataTypes.STRING(),
+                DataTypes.BOOLEAN(),
+                DataTypes.STRING(),
+                DataTypes.STRING(),
+                DataTypes.STRING()
         };
     }
 
     private String[] generateTableColumnsNames() {
-        return new String[] {"name", "type", "null", "key", "extras", "watermark"};
+        return new String[]{"name", "type", "null", "key", "extras", "watermark"};
     }
 
     private TableResultInternal buildShowTablesResult(
@@ -1511,9 +1543,9 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                                     row ->
                                             showTablesOp.isNotLike()
                                                     != SqlLikeUtils.like(
-                                                            row,
-                                                            showTablesOp.getLikePattern(),
-                                                            "\\"))
+                                                    row,
+                                                    showTablesOp.getLikePattern(),
+                                                    "\\"))
                             .toArray(String[]::new);
         }
         return buildShowResult("table name", rows);
@@ -1529,9 +1561,9 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                                     row ->
                                             showColumnsOp.isNotLike()
                                                     != SqlLikeUtils.like(
-                                                            row[0].toString(),
-                                                            showColumnsOp.getLikePattern(),
-                                                            "\\"))
+                                                    row[0].toString(),
+                                                    showColumnsOp.getLikePattern(),
+                                                    "\\"))
                             .toArray(Object[][]::new);
         }
         return buildResult(generateTableColumnsNames(), generateTableColumnsDataTypes(), rows);
@@ -1540,11 +1572,11 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     private TableResultInternal buildShowFullModulesResult(ModuleEntry[] moduleEntries) {
         Object[][] rows =
                 Arrays.stream(moduleEntries)
-                        .map(entry -> new Object[] {entry.name(), entry.used()})
+                        .map(entry -> new Object[]{entry.name(), entry.used()})
                         .toArray(Object[][]::new);
         return buildResult(
-                new String[] {"module name", "used"},
-                new DataType[] {DataTypes.STRING(), DataTypes.BOOLEAN()},
+                new String[]{"module name", "used"},
+                new DataType[]{DataTypes.STRING(), DataTypes.BOOLEAN()},
                 rows);
     }
 
@@ -1574,13 +1606,13 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                 .map(
                         (c) -> {
                             final LogicalType logicalType = c.getDataType().getLogicalType();
-                            return new Object[] {
-                                c.getName(),
-                                logicalType.copy(true).asSummaryString(),
-                                logicalType.isNullable(),
-                                fieldToPrimaryKey.getOrDefault(c.getName(), null),
-                                c.explainExtras().orElse(null),
-                                fieldToWatermark.getOrDefault(c.getName(), null)
+                            return new Object[]{
+                                    c.getName(),
+                                    logicalType.copy(true).asSummaryString(),
+                                    logicalType.isNullable(),
+                                    fieldToPrimaryKey.getOrDefault(c.getName(), null),
+                                    c.explainExtras().orElse(null),
+                                    fieldToWatermark.getOrDefault(c.getName(), null)
                             };
                         })
                 .toArray(Object[][]::new);
@@ -1730,6 +1762,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     }
 
     protected List<Transformation<?>> translate(List<ModifyOperation> modifyOperations) {
+        // 往下追
         return planner.translate(modifyOperations);
     }
 

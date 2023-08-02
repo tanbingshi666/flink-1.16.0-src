@@ -258,7 +258,9 @@ public class SqlToOperationConverter {
     public static Optional<Operation> convert(
             FlinkPlannerImpl flinkPlanner, CatalogManager catalogManager, SqlNode sqlNode) {
         // validate the query
+        // 1 校验 SqlNode 是否合法
         final SqlNode validated = flinkPlanner.validate(sqlNode);
+        // 2 合法的 SqlNode 转化为 Operation (CreateTableOperation)
         return convertValidatedSqlNode(flinkPlanner, catalogManager, validated);
     }
 
@@ -305,6 +307,7 @@ public class SqlToOperationConverter {
                         converter.createTableConverter.convertCreateTableAS(
                                 flinkPlanner, (SqlCreateTableAs) validated));
             }
+            // 转化 CreateTableOperation
             return Optional.of(
                     converter.createTableConverter.convertCreateTable((SqlCreateTable) validated));
         } else if (validated instanceof SqlDropTable) {
@@ -348,6 +351,7 @@ public class SqlToOperationConverter {
         } else if (validated instanceof SqlShowJars) {
             return Optional.of(converter.convertShowJars((SqlShowJars) validated));
         } else if (validated instanceof RichSqlInsert) {
+            // 如果是 INSERT INTO 语句 执行如下
             return Optional.of(converter.convertSqlInsert((RichSqlInsert) validated));
         } else if (validated instanceof SqlBeginStatementSet) {
             return Optional.of(
@@ -371,6 +375,7 @@ public class SqlToOperationConverter {
             return Optional.of(
                     converter.convertCompileAndExecutePlan((SqlCompileAndExecutePlan) validated));
         } else if (validated.getKind().belongsTo(SqlKind.QUERY)) {
+            // 执行查询语句 比如 SELECT * FROM yyyy
             return Optional.of(converter.convertSqlQuery(validated));
         } else if (validated instanceof SqlAnalyzeTable) {
             return Optional.of(converter.convertAnalyzeTable((SqlAnalyzeTable) validated));
@@ -648,16 +653,17 @@ public class SqlToOperationConverter {
                         partitionKeys.isEmpty()
                                 ? String.format("Table %s is not partitioned.", tableIdentifier)
                                 : String.format(
-                                        "Available ordered partition columns: [%s]",
-                                        partitionKeys.stream()
-                                                .collect(Collectors.joining("', '", "'", "'")));
+                                "Available ordered partition columns: [%s]",
+                                partitionKeys.stream()
+                                        .collect(Collectors.joining("', '", "'", "'")));
                 partitionKVs.forEach(
                         (partitionKey, partitionValue) -> {
                             if (!validPartitionKeySet.contains(partitionKey)) {
                                 throw new ValidationException(
                                         String.format(
                                                 "Partition column '%s' not defined in the table schema. %s",
-                                                partitionKey, exMsg));
+                                                partitionKey,
+                                                exMsg));
                             }
                         });
                 partitionSpec = new CatalogPartitionSpec(partitionKVs);
@@ -780,9 +786,11 @@ public class SqlToOperationConverter {
      * Converts language string to the FunctionLanguage.
      *
      * @param languageString the language string from SQL parser
+     *
      * @return supported FunctionLanguage otherwise raise UnsupportedOperationException.
+     *
      * @throws UnsupportedOperationException if the languageString is not parsable or language is
-     *     not supported
+     *         not supported
      */
     private FunctionLanguage parseLanguage(String languageString) {
         if (StringUtils.isNullOrWhitespaceOnly(languageString)) {
@@ -823,10 +831,16 @@ public class SqlToOperationConverter {
         ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
         ContextResolvedTable contextResolvedTable = catalogManager.getTableOrError(identifier);
 
+        // 将 INSERT INTO xxx SELECT a,b,c FROM yyy 中的 yyy 转化为 RelNode
+        // 比如说 yyy 是 CREATE TABLE yyy (...) with (connector = socket, ....)
+        // 那么底层最终调用 FactoryUtil.createDynamicTableSource()
+        // 进而调用 SocketDynamicTableFactory.createDynamicTableSource()
         PlannerQueryOperation query =
-                (PlannerQueryOperation)
-                        convertValidatedSqlNodeOrFail(
-                                flinkPlanner, catalogManager, insert.getSource());
+                (PlannerQueryOperation) convertValidatedSqlNodeOrFail(
+                        flinkPlanner,
+                        catalogManager,
+                        // SqlSelect
+                        insert.getSource());
 
         return new SinkModifyOperation(
                 contextResolvedTable,
@@ -1140,7 +1154,8 @@ public class SqlToOperationConverter {
                 throw new ValidationException(
                         String.format(
                                 "VIEW definition and input fields not match:\n\tDef fields: %s.\n\tInput fields: %s.",
-                                aliasFieldNames, inputFieldNames));
+                                aliasFieldNames,
+                                inputFieldNames));
             }
 
             schema = ResolvedSchema.physical(aliasFieldNames, schema.getColumnDataTypes());
@@ -1250,6 +1265,7 @@ public class SqlToOperationConverter {
 
     /** Fallback method for sql query. */
     private Operation convertSqlQuery(SqlNode node) {
+        // 执行查询语句 一般情况下 node = SqlSelect
         return toQueryOperation(flinkPlanner, node);
     }
 
@@ -1336,7 +1352,8 @@ public class SqlToOperationConverter {
                                             throw new ValidationException(
                                                     String.format(
                                                             "Column: %s does not exist in the table: %s.",
-                                                            c, tableIdentifier));
+                                                            c,
+                                                            tableIdentifier));
                                         }
                                         Column col = colOpt.get();
                                         if (col instanceof Column.ComputedColumn) {
@@ -1495,6 +1512,7 @@ public class SqlToOperationConverter {
 
     private PlannerQueryOperation toQueryOperation(FlinkPlannerImpl planner, SqlNode validated) {
         // transform to a relational tree
+        // 转化
         RelRoot relational = planner.rel(validated);
         return new PlannerQueryOperation(relational.project());
     }

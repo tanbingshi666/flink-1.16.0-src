@@ -267,6 +267,7 @@ public class SqlToRelConverter {
     public final RelOptTable.ViewExpander viewExpander;
 
     // ~ Constructors -----------------------------------------------------------
+
     /**
      * Creates a converter.
      *
@@ -365,6 +366,7 @@ public class SqlToRelConverter {
      * Returns the type inferred for a dynamic parameter.
      *
      * @param index 0-based index of dynamic parameter
+     *
      * @return inferred type, never null
      */
     public RelDataType getDynamicParamType(int index) {
@@ -379,6 +381,7 @@ public class SqlToRelConverter {
      * Returns the current count of the number of dynamic parameters in an EXPLAIN PLAN statement.
      *
      * @param increment if true, increment the count
+     *
      * @return the current count before the optional increment
      */
     public int getDynamicParamCountInExplain(boolean increment) {
@@ -486,6 +489,7 @@ public class SqlToRelConverter {
      *
      * @param query Query
      * @param rootRel Root relational expression
+     *
      * @return New root relational expression after decorrelation
      */
     public RelNode decorrelate(SqlNode query, RelNode rootRel) {
@@ -512,8 +516,9 @@ public class SqlToRelConverter {
      * this method does nothing.
      *
      * @param ordered Whether the relational expression must produce results in a particular order
-     *     (typically because it has an ORDER BY at top level)
+     *         (typically because it has an ORDER BY at top level)
      * @param rootRel Relational expression that is at the root of the tree
+     *
      * @return Trimmed relational expression
      */
     public RelNode trimUnusedFields(boolean ordered, RelNode rootRel) {
@@ -527,7 +532,7 @@ public class SqlToRelConverter {
                     && collations != null
                     && !collations.isEmpty()
                     && !collations.equals(
-                            com.google.common.collect.ImmutableList.of(RelCollations.EMPTY))) {
+                    com.google.common.collect.ImmutableList.of(RelCollations.EMPTY))) {
                 final RelTraitSet traitSet =
                         rootRel.getTraitSet().replace(RelCollationTraitDef.INSTANCE, collations);
                 rootRel = rootRel.copy(traitSet, rootRel.getInputs());
@@ -558,15 +563,16 @@ public class SqlToRelConverter {
      *
      * @param query Query to convert
      * @param needsValidation Whether to validate the query before converting; <code>false</code> if
-     *     the query has already been validated.
+     *         the query has already been validated.
      * @param top Whether the query is top-level, say if its result will become a JDBC result set;
-     *     <code>false</code> if the query will be part of a view.
+     *         <code>false</code> if the query will be part of a view.
      */
     public RelRoot convertQuery(SqlNode query, final boolean needsValidation, final boolean top) {
         if (needsValidation) {
             query = validator.validate(query);
         }
 
+        // 递归转化 SqlSelect 比如 SELECT 语句存在子 SELECT 语句
         RelNode result = convertQueryRecursive(query, top, null).rel;
         if (top) {
             if (isStream(query)) {
@@ -654,6 +660,7 @@ public class SqlToRelConverter {
     public RelNode convertSelect(SqlSelect select, boolean top) {
         final SqlValidatorScope selectScope = validator.getWhereScope(select);
         final Blackboard bb = createBlackboard(selectScope, null, top);
+        // 转化
         convertSelectImpl(bb, select);
         return bb.root;
     }
@@ -666,26 +673,35 @@ public class SqlToRelConverter {
 
     /** Implementation of {@link #convertSelect(SqlSelect, boolean)}; derived class may override. */
     protected void convertSelectImpl(final Blackboard bb, SqlSelect select) {
+        // 1 转化 FROM 语句
         convertFrom(bb, select.getFrom());
+        // 2 转化 WHERE 语句
         convertWhere(bb, select.getWhere());
 
         final List<SqlNode> orderExprList = new ArrayList<>();
         final List<RelFieldCollation> collationList = new ArrayList<>();
+
+        // 3 ORDER BY 语句聚合排序
         gatherOrderExprs(bb, select, select.getOrderList(), orderExprList, collationList);
         final RelCollation collation = cluster.traitSet().canonize(RelCollations.of(collationList));
 
+        // 4 判断 SqlSelect 是否存在聚合
         if (validator.isAggregate(select)) {
             convertAgg(bb, select, orderExprList);
         } else {
+            // 5 转化 SELECT 字段
             convertSelectList(bb, select, orderExprList);
         }
 
+        // 6 是否存在 DISTINCT 语句
         if (select.isDistinct()) {
             distinctify(bb, true);
         }
 
+        // 7 执行 ORDER BY 语句
         convertOrder(select, bb, collation, orderExprList, select.getOffset(), select.getFetch());
 
+        // 8 是否存在 HINT 语句
         if (select.hasHints()) {
             final List<RelHint> hints = SqlUtil.getRelHint(hintStrategies, select.getHints());
             // Attach the hints to the first Hintable node we found from the root node.
@@ -811,7 +827,7 @@ public class SqlToRelConverter {
      * @param bb Blackboard
      * @param collation Collation list
      * @param orderExprList Method populates this list with orderBy expressions not present in
-     *     selectList
+     *         selectList
      * @param offset Expression for number of rows to discard before returning first row
      * @param fetch Expression for number of rows to fetch
      */
@@ -827,10 +843,10 @@ public class SqlToRelConverter {
                 || select.getOrderList().getList().isEmpty()) {
             assert removeSortInSubQuery(bb.top) || collation.getFieldCollations().isEmpty();
             if ((offset == null
-                            || (offset instanceof SqlLiteral
-                                    && ((SqlLiteral) offset)
-                                            .bigDecimalValue()
-                                            .equals(BigDecimal.ZERO)))
+                    || (offset instanceof SqlLiteral
+                    && ((SqlLiteral) offset)
+                    .bigDecimalValue()
+                    .equals(BigDecimal.ZERO)))
                     && fetch == null) {
                 return;
             }
@@ -905,6 +921,7 @@ public class SqlToRelConverter {
      *
      * @param scope Scope where {@code sqlNode} occurs
      * @param sqlNode the root node from which to look for NOT operators
+     *
      * @return the transformed SqlNode representation with NOT pushed down.
      */
     private static SqlNode pushDownNotForIn(SqlValidatorScope scope, SqlNode sqlNode) {
@@ -1436,6 +1453,7 @@ public class SqlToRelConverter {
      * @param bb blackboard used to convert the sub-query
      * @param converted RelNode tree corresponding to the sub-query
      * @param isExists true if the sub-query is part of an EXISTS expression
+     *
      * @return Whether the sub-query can be converted to a constant
      */
     private boolean convertNonCorrelatedSubQuery(
@@ -1464,6 +1482,7 @@ public class SqlToRelConverter {
      *
      * @param query the query
      * @param plan the original RelNode tree corresponding to the statement
+     *
      * @return the converted RelNode tree
      */
     public RelNode convertToSingleValueSubq(SqlNode query, RelNode plan) {
@@ -1512,6 +1531,7 @@ public class SqlToRelConverter {
      * @param leftKeys LHS
      * @param valuesList RHS
      * @param op The operator (IN, NOT IN, &gt; SOME, ...)
+     *
      * @return converted expression
      */
     private RexNode convertInToOr(
@@ -1583,7 +1603,7 @@ public class SqlToRelConverter {
     private RexNode ensureSqlType(RelDataType type, RexNode node) {
         if (type.getSqlTypeName() == node.getType().getSqlTypeName()
                 || (type.getSqlTypeName() == SqlTypeName.VARCHAR
-                        && node.getType().getSqlTypeName() == SqlTypeName.CHAR)) {
+                && node.getType().getSqlTypeName() == SqlTypeName.CHAR)) {
             return node;
         }
         return rexBuilder.ensureType(type, node, true);
@@ -1611,9 +1631,10 @@ public class SqlToRelConverter {
      * @param seek A query, for example 'select * from emp' or 'values (1,2,3)' or '('Foo', 34)'.
      * @param subQueryType Whether sub-query is IN, EXISTS or scalar
      * @param logic Whether the answer needs to be in full 3-valued logic (TRUE, FALSE, UNKNOWN)
-     *     will be required, or whether we can accept an approximation (say representing UNKNOWN as
-     *     FALSE)
+     *         will be required, or whether we can accept an approximation (say representing UNKNOWN as
+     *         FALSE)
      * @param notIn Whether the operation is NOT IN
+     *
      * @return join expression
      */
     private RelOptUtil.Exists convertExists(
@@ -1657,7 +1678,7 @@ public class SqlToRelConverter {
         // LogicalOneRow.
 
         final com.google.common.collect.ImmutableList.Builder<
-                        com.google.common.collect.ImmutableList<RexLiteral>>
+                com.google.common.collect.ImmutableList<RexLiteral>>
                 tupleList = com.google.common.collect.ImmutableList.builder();
         final RelDataType rowType;
         if (targetRowType != null) {
@@ -1785,10 +1806,10 @@ public class SqlToRelConverter {
      * @param bb blackboard
      * @param node the SQL parse tree
      * @param logic Whether the answer needs to be in full 3-valued logic (TRUE, FALSE, UNKNOWN)
-     *     will be required, or whether we can accept an approximation (say representing UNKNOWN as
-     *     FALSE)
+     *         will be required, or whether we can accept an approximation (say representing UNKNOWN as
+     *         FALSE)
      * @param registerOnlyScalarSubQueries if set to true and the parse tree corresponds to a
-     *     variation of a select node, only register it if it's a scalar sub-query
+     *         variation of a select node, only register it if it's a scalar sub-query
      */
     private void findSubQueries(
             Blackboard bb,
@@ -1817,9 +1838,9 @@ public class SqlToRelConverter {
         }
         if (node instanceof SqlCall) {
             switch (kind) {
-                    // Do no change logic for AND, IN and NOT IN expressions;
-                    // but do change logic for OR, NOT and others;
-                    // EXISTS was handled already.
+                // Do no change logic for AND, IN and NOT IN expressions;
+                // but do change logic for OR, NOT and others;
+                // EXISTS was handled already.
                 case AND:
                 case IN:
                 case NOT_IN:
@@ -1890,6 +1911,7 @@ public class SqlToRelConverter {
      * Converts an expression from {@link SqlNode} to {@link RexNode} format.
      *
      * @param node Expression to translate
+     *
      * @return Converted expression
      */
     public RexNode convertExpression(SqlNode node) {
@@ -1906,7 +1928,8 @@ public class SqlToRelConverter {
      *
      * @param node Expression to translate
      * @param nameToNodeMap map from String to {@link RexNode}; when an {@link SqlIdentifier} is
-     *     encountered, it is used as a key and translated to the corresponding value from this map
+     *         encountered, it is used as a key and translated to the corresponding value from this map
+     *
      * @return Converted expression
      */
     public RexNode convertExpression(SqlNode node, Map<String, RexNode> nameToNodeMap) {
@@ -1929,6 +1952,7 @@ public class SqlToRelConverter {
      *
      * @param node Expression
      * @param bb Blackboard
+     *
      * @return null to proceed with the usual expression translation process
      */
     protected RexNode convertExtendedExpression(SqlNode node, Blackboard bb) {
@@ -2035,6 +2059,7 @@ public class SqlToRelConverter {
     }
 
     protected void convertFrom(Blackboard bb, SqlNode from) {
+        // FROM 也即 SELECT ... FROM xxx 中的 xxx 表名
         convertFrom(bb, from, Collections.emptyList());
     }
 
@@ -2062,16 +2087,15 @@ public class SqlToRelConverter {
      *
      * @param bb Scope within which to resolve identifiers
      * @param from FROM clause of a query. Examples include:
-     *     <ul>
-     *       <li>a single table ("SALES.EMP"),
-     *       <li>an aliased table ("EMP AS E"),
-     *       <li>a list of tables ("EMP, DEPT"),
-     *       <li>an ANSI Join expression ("EMP JOIN DEPT ON EMP.DEPTNO = DEPT.DEPTNO"),
-     *       <li>a VALUES clause ("VALUES ('Fred', 20)"),
-     *       <li>a query ("(SELECT * FROM EMP WHERE GENDER = 'F')"),
-     *       <li>or any combination of the above.
-     *     </ul>
-     *
+     *         <ul>
+     *           <li>a single table ("SALES.EMP"),
+     *           <li>an aliased table ("EMP AS E"),
+     *           <li>a list of tables ("EMP, DEPT"),
+     *           <li>an ANSI Join expression ("EMP JOIN DEPT ON EMP.DEPTNO = DEPT.DEPTNO"),
+     *           <li>a VALUES clause ("VALUES ('Fred', 20)"),
+     *           <li>a query ("(SELECT * FROM EMP WHERE GENDER = 'F')"),
+     *           <li>or any combination of the above.
+     *         </ul>
      * @param fieldNames Field aliases, usually come from AS clause
      */
     protected void convertFrom(Blackboard bb, SqlNode from, List<String> fieldNames) {
@@ -2082,16 +2106,24 @@ public class SqlToRelConverter {
 
         final SqlCall call;
         final SqlNode[] operands;
+        // 一般情况下 SELECT * FROM xxx Flink 会封装成 如下
+        // SELECT * FROM `default_catalog`.`default_database`.`xxx` AS `xxx`
         switch (from.getKind()) {
             case AS:
                 call = (SqlCall) from;
+                // 也即 `default_catalog`.`default_database`.`xxx`
                 SqlNode firstOperand = call.operand(0);
                 final List<String> fieldNameList = new ArrayList<>();
+                // 一般情况下 call.operandCount() = 2
+                // 也即 0 `default_catalog`.`default_database`.`xxx`
+                //     1 `xxx`
                 if (call.operandCount() > 2) {
                     for (SqlNode node : Util.skip(call.getOperandList(), 2)) {
                         fieldNameList.add(((SqlIdentifier) node).getSimple());
                     }
                 }
+
+                // 递归执行转化
                 convertFrom(bb, firstOperand, fieldNameList);
 
                 // ----- FLINK MODIFICATION BEGIN -----
@@ -2172,6 +2204,8 @@ public class SqlToRelConverter {
                 return;
 
             case IDENTIFIER:
+                // 这里的 from 就拿到了具体的表名 比如 `default_catalog`.`default_database`.`xxx`
+                // 里面就会创建 xxx 对应的 Flink SourceTable
                 convertIdentifier(bb, (SqlIdentifier) from, null, null);
                 return;
 
@@ -2556,6 +2590,8 @@ public class SqlToRelConverter {
                         SqlUtil.getRelHint(hintStrategies, tableHints),
                         LogicalTableScan.create(
                                 cluster, table, com.google.common.collect.ImmutableList.of()));
+        // table 就是 `default_catalog`.`default_database`.`xxx`
+        // 将 xxx 转化为 Flink Table
         tableRel = toRel(table, hints);
         bb.setRoot(tableRel, true);
         if (usedDataset[0]) {
@@ -2616,7 +2652,8 @@ public class SqlToRelConverter {
     }
 
     protected void afterTableFunction(
-            Blackboard bb, SqlCall call, LogicalTableFunctionScan callRel) {}
+            Blackboard bb, SqlCall call, LogicalTableFunctionScan callRel) {
+    }
 
     private void convertTemporalTable(Blackboard bb, SqlCall call) {
         final SqlSnapshot snapshot = (SqlSnapshot) call;
@@ -2760,11 +2797,11 @@ public class SqlToRelConverter {
             } else {
                 assert prevNs == foundNs
                         : "All correlation variables should resolve"
-                                + " to the same namespace."
-                                + " Prev ns="
-                                + prevNs
-                                + ", new ns="
-                                + foundNs;
+                        + " to the same namespace."
+                        + " Prev ns="
+                        + prevNs
+                        + ", new ns="
+                        + foundNs;
             }
 
             int namespaceOffset = 0;
@@ -2842,7 +2879,8 @@ public class SqlToRelConverter {
      *
      * @param subq the sub-query
      * @param bb blackboard used while converting the sub-query, i.e., the blackboard of the parent
-     *     query of this sub-query
+     *         query of this sub-query
+     *
      * @return true if the sub-query is non-correlated
      */
     private boolean isSubQueryNonCorrelated(RelNode subq, Blackboard bb) {
@@ -3026,9 +3064,11 @@ public class SqlToRelConverter {
      * @param leftNamespace Namespace of left input to join
      * @param rightNamespace Namespace of right input to join
      * @param nameList List of column names to join on
+     *
      * @return Expression to match columns from name list, or true if name list is empty
      */
-    private @Nonnull RexNode convertUsing(
+    private @Nonnull
+    RexNode convertUsing(
             SqlValidatorNamespace leftNamespace,
             SqlValidatorNamespace rightNamespace,
             List<String> nameList) {
@@ -3275,6 +3315,7 @@ public class SqlToRelConverter {
      * @param groupSet Bit set of ordinals of grouping columns
      * @param groupSets Grouping sets
      * @param aggCalls Array of calls to aggregate functions
+     *
      * @return LogicalAggregate
      */
     protected RelNode createAggregate(
@@ -3309,7 +3350,7 @@ public class SqlToRelConverter {
      *
      * @param bb Scope within which to resolve identifiers
      * @param select Select clause. Never null, because we invent a dummy SELECT if ORDER BY is
-     *     applied to a set operation (UNION etc.)
+     *         applied to a set operation (UNION etc.)
      * @param orderList Order by clause, may be null
      * @param extraOrderExprs Sort expressions which are not in the select clause (output)
      * @param collationList List of collations (output)
@@ -3330,10 +3371,10 @@ public class SqlToRelConverter {
         if (removeSortInSubQuery(bb.top)) {
             SqlNode offset = select.getOffset();
             if ((offset == null
-                            || (offset instanceof SqlLiteral
-                                    && ((SqlLiteral) offset)
-                                            .bigDecimalValue()
-                                            .equals(BigDecimal.ZERO)))
+                    || (offset instanceof SqlLiteral
+                    && ((SqlLiteral) offset)
+                    .bigDecimalValue()
+                    .equals(BigDecimal.ZERO)))
                     && select.getFetch() == null) {
                 return;
             }
@@ -3453,12 +3494,14 @@ public class SqlToRelConverter {
      * @param query Query
      * @param top Whether this query is the top-level query of the statement
      * @param targetRowType Target row type, or null
+     *
      * @return Relational expression
      */
     protected RelRoot convertQueryRecursive(SqlNode query, boolean top, RelDataType targetRowType) {
         final SqlKind kind = query.getKind();
         switch (kind) {
             case SELECT:
+                // 执行 SELECT 语句转化
                 return RelRoot.of(convertSelect((SqlSelect) query, top), kind);
             case INSERT:
                 return RelRoot.of(convertInsert((SqlInsert) query), kind);
@@ -3485,6 +3528,7 @@ public class SqlToRelConverter {
      * Converts a set operation (UNION, INTERSECT, MINUS) into relational expressions.
      *
      * @param call Call to set operator
+     *
      * @return Relational expression
      */
     protected RelNode convertSetOp(SqlCall call) {
@@ -3616,6 +3660,9 @@ public class SqlToRelConverter {
     }
 
     public RelNode toRel(final RelOptTable table, @Nonnull final List<RelHint> hints) {
+        // 执行将 `default_catalog`.`default_database`.`xxx` 中的 xxx
+        // 转化为 RelNode 同时里面会根据 xxx 的配置创建对应的 Flink Table
+        // 如果是 SELECT * FROM xxx -> CatalogSourceTable.toRel()
         final RelNode scan = table.toRel(createToRelContext(hints));
 
         final InitializerExpressionFactory ief =
@@ -3682,6 +3729,7 @@ public class SqlToRelConverter {
      *
      * @param call Insert expression
      * @param source Source relational expression
+     *
      * @return Converted INSERT statement
      */
     protected RelNode convertColumnList(final SqlInsert call, RelNode source) {
@@ -3897,7 +3945,7 @@ public class SqlToRelConverter {
         bb.setRoot(sourceRel, false);
         com.google.common.collect.ImmutableList.Builder<RexNode>
                 rexNodeSourceExpressionListBuilder =
-                        com.google.common.collect.ImmutableList.builder();
+                com.google.common.collect.ImmutableList.builder();
         for (SqlNode n : call.getSourceExpressionList()) {
             RexNode rn = bb.convertExpression(n);
             rexNodeSourceExpressionListBuilder.add(rn);
@@ -4055,6 +4103,7 @@ public class SqlToRelConverter {
      *
      * @param bb Blackboard
      * @param inputRef Input ref
+     *
      * @return Adjusted input ref
      */
     protected RexNode adjustInputRef(Blackboard bb, RexInputRef inputRef) {
@@ -4074,6 +4123,7 @@ public class SqlToRelConverter {
      *
      * @param bb Blackboard
      * @param rowConstructor Row constructor expression
+     *
      * @return Relational expression which returns a single row.
      */
     private RelNode convertRowConstructor(Blackboard bb, SqlCall rowConstructor) {
@@ -4265,7 +4315,8 @@ public class SqlToRelConverter {
             List<RexNode> exprList,
             List<String> nameList,
             Collection<String> aliasList,
-            List<SqlMonotonicity> columnMonotonicityList) {}
+            List<SqlMonotonicity> columnMonotonicityList) {
+    }
 
     private String deriveAlias(final SqlNode node, Collection<String> aliases, final int ordinal) {
         String alias = validator.deriveAlias(node, ordinal);
@@ -4403,9 +4454,9 @@ public class SqlToRelConverter {
          * Creates a Blackboard.
          *
          * @param scope Name-resolution scope for expressions validated within this query. Can be
-         *     null if this Blackboard is for a leaf node, say
+         *         null if this Blackboard is for a leaf node, say
          * @param nameToNodeMap Map which translates the expression to map a given parameter into,
-         *     if translating expressions; null otherwise
+         *         if translating expressions; null otherwise
          * @param top Whether this is the root of the query
          */
         protected Blackboard(
@@ -4429,8 +4480,9 @@ public class SqlToRelConverter {
          * @param rel Relational expression
          * @param joinType Join type
          * @param leftKeys LHS of IN clause, or null for expressions other than IN
+         *
          * @return Expression with which to refer to the row (or partial row) coming from this
-         *     relational expression's side of the join
+         *         relational expression's side of the join
          */
         public RexNode register(RelNode rel, JoinRelType joinType, List<RexNode> leftKeys) {
             assert joinType != null;
@@ -4519,6 +4571,7 @@ public class SqlToRelConverter {
          * Re-register the {@code registered} with given root node and return the new root node.
          *
          * @param root The given root, never leaf
+         *
          * @return new root after the registration
          */
         public RelNode reRegister(RelNode root) {
@@ -4537,9 +4590,9 @@ public class SqlToRelConverter {
          *
          * @param root New root relational expression
          * @param leaf Whether the relational expression is a leaf, that is, derived from an atomic
-         *     relational expression such as a table name in the from clause, or the projection on
-         *     top of a select-sub-query. In particular, relational expressions derived from JOIN
-         *     operators are not leaves, but set expressions are.
+         *         relational expression such as a table name in the from clause, or the projection on
+         *         top of a select-sub-query. In particular, relational expressions derived from JOIN
+         *         operators are not leaves, but set expressions are.
          */
         public void setRoot(RelNode root, boolean leaf) {
             setRoot(Collections.singletonList(root), root, root instanceof LogicalJoin);
@@ -4566,7 +4619,8 @@ public class SqlToRelConverter {
          *
          * @param datasetName Dataset name
          */
-        public void setDataset(String datasetName) {}
+        public void setDataset(String datasetName) {
+        }
 
         void setRoot(List<RelNode> inputs) {
             setRoot(inputs, null, false);
@@ -4576,6 +4630,7 @@ public class SqlToRelConverter {
          * Returns an expression with which to reference a from-list item.
          *
          * @param qualified the alias of the from item
+         *
          * @return a {@link RexFieldAccess} or {@link RexRangeRef}, or null if not found
          */
         Pair<RexNode, Map<String, Integer>> lookupExp(SqlQualified qualified) {
@@ -4822,8 +4877,8 @@ public class SqlToRelConverter {
                         RelNode rel = root.rel;
                         while (rel instanceof Project
                                 || rel instanceof Sort
-                                        && ((Sort) rel).fetch == null
-                                        && ((Sort) rel).offset == null) {
+                                && ((Sort) rel).fetch == null
+                                && ((Sort) rel).offset == null) {
                             rel = ((SingleRel) rel).getInput();
                         }
                         return RexSubQuery.exists(rel);
@@ -4932,9 +4987,9 @@ public class SqlToRelConverter {
                             if (nullDefaultDirection != direction.defaultNullDirection()) {
                                 SqlKind nullDirectionSqlKind =
                                         validator
-                                                        .config()
-                                                        .defaultNullCollation()
-                                                        .last(desc(direction))
+                                                .config()
+                                                .defaultNullCollation()
+                                                .last(desc(direction))
                                                 ? SqlKind.NULLS_LAST
                                                 : SqlKind.NULLS_FIRST;
                                 flags.add(nullDirectionSqlKind);
@@ -4956,8 +5011,9 @@ public class SqlToRelConverter {
          * constant.
          *
          * @param rex the expression to be examined
+         *
          * @return true if the expression is a dynamic parameter, a literal, or a literal that is
-         *     being cast
+         *         being cast
          */
         private boolean isConvertedSubq(RexNode rex) {
             if ((rex instanceof RexLiteral) || (rex instanceof RexDynamicParam)) {
@@ -4991,11 +5047,11 @@ public class SqlToRelConverter {
 
         public SqlNode validateExpression(RelDataType rowType, SqlNode expr) {
             return SqlValidatorUtil.validateExprWithRowType(
-                            catalogReader.nameMatcher().isCaseSensitive(),
-                            opTab,
-                            typeFactory,
-                            rowType,
-                            expr)
+                    catalogReader.nameMatcher().isCaseSensitive(),
+                    opTab,
+                    typeFactory,
+                    rowType,
+                    expr)
                     .left;
         }
 
@@ -5034,8 +5090,8 @@ public class SqlToRelConverter {
                 final SqlOperator op = call.getOperator();
                 if (window == null
                         && (op.isAggregator()
-                                || op.getKind() == SqlKind.FILTER
-                                || op.getKind() == SqlKind.WITHIN_GROUP)) {
+                        || op.getKind() == SqlKind.FILTER
+                        || op.getKind() == SqlKind.WITHIN_GROUP)) {
                     return agg.lookupAggregates(call);
                 }
             }
@@ -5113,7 +5169,7 @@ public class SqlToRelConverter {
      * <p>Consider the expression
      *
      * <blockquote>
-     *
+     * <p>
      * {@code SELECT deptno, SUM(2 * sal) FROM emp GROUP BY deptno}
      *
      * </blockquote>
@@ -5520,7 +5576,7 @@ public class SqlToRelConverter {
          * @param systemFieldCount Number of system fields
          */
         LookupContext(Blackboard bb, List<RelNode> rels, int systemFieldCount) {
-            bb.flatten(rels, systemFieldCount, new int[] {0}, relOffsetList);
+            bb.flatten(rels, systemFieldCount, new int[]{0}, relOffsetList);
         }
 
         /**
@@ -5532,6 +5588,7 @@ public class SqlToRelConverter {
          * field of {@code Dept} is field 6.
          *
          * @param offset Offset of relational expression in FROM clause
+         *
          * @return Relational expression and the ordinal of its first field
          */
         Pair<RelNode, Integer> findRel(int offset) {
@@ -5642,9 +5699,9 @@ public class SqlToRelConverter {
                             0,
                             reinterpretCast
                                     ? rexBuilder.makeReinterpretCast(
-                                            histogramType,
-                                            exprs.get(0),
-                                            rexBuilder.makeLiteral(false))
+                                    histogramType,
+                                    exprs.get(0),
+                                    rexBuilder.makeLiteral(false))
                                     : rexBuilder.makeCast(histogramType, exprs.get(0)));
                 }
 
@@ -5716,6 +5773,7 @@ public class SqlToRelConverter {
          * SqlStdOperatorTable#HISTOGRAM_MIN}.
          *
          * @param aggFunction An aggregate function
+         *
          * @return Its histogram function, or null
          */
         SqlFunction getHistogramOp(SqlAggFunction aggFunction) {

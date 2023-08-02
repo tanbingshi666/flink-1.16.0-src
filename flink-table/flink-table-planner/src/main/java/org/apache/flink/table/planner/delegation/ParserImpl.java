@@ -85,6 +85,7 @@ public class ParserImpl implements Parser {
      * statements.
      *
      * @param statement input statement.
+     *
      * @return parsed operations.
      */
     @Override
@@ -92,6 +93,8 @@ public class ParserImpl implements Parser {
         CalciteParser parser = calciteParserSupplier.get();
         FlinkPlannerImpl planner = validatorSupplier.get();
 
+        // 1 预解析 SQL
+        // 如果 SQL 是以 CLEAR、HELP、EXIT|QUIT、RESET、SET 前缀 则直接返回
         Optional<Operation> command = EXTENDED_PARSER.parse(statement);
         if (command.isPresent()) {
             return Collections.singletonList(command.get());
@@ -99,10 +102,17 @@ public class ParserImpl implements Parser {
 
         // parse the sql query
         // use parseSqlList here because we need to support statement end with ';' in sql client.
+        // 2 解析 SQL
+        // 2.1 基于 Calcite 解析 SQL 返回 SqlNodeList
         SqlNodeList sqlNodeList = parser.parseSqlList(statement);
+        // 创建语句 SqlCreateTable
+        // tableName -> socket_info
+        // columnList -> `user` STRING, `url` STRING, `ts` BIGINT
+        // propertyList -> 'connector' = 'socket', 'hostname' = 'hadoop', 'port' = '10000', 'format' = 'csv'
         List<SqlNode> parsed = sqlNodeList.getList();
         Preconditions.checkArgument(parsed.size() == 1, "only single statement supported");
         return Collections.singletonList(
+                // 3 SqlNode 转化 Operation
                 SqlToOperationConverter.convert(planner, catalogManager, parsed.get(0))
                         .orElseThrow(() -> new TableException("Unsupported query: " + statement)));
     }

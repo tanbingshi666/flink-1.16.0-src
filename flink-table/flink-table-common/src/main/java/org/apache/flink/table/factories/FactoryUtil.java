@@ -68,7 +68,9 @@ import static org.apache.flink.configuration.GlobalConfiguration.HIDDEN_CONTENT;
 import static org.apache.flink.table.factories.ManagedTableFactory.DEFAULT_IDENTIFIER;
 import static org.apache.flink.table.module.CommonModuleOptions.MODULE_TYPE;
 
-/** Utility for working with {@link Factory}s. */
+/**
+ * Utility for working with {@link Factory}s.
+ */
 @PublicEvolving
 public final class FactoryUtil {
 
@@ -156,10 +158,12 @@ public final class FactoryUtil {
                         classLoader,
                         isTemporary);
         try {
+            // 1 根据 connector 获取对应的 DynamicTableSourceFactory
             final DynamicTableSourceFactory factory =
                     preferredFactory != null
                             ? preferredFactory
                             : discoverTableFactory(DynamicTableSourceFactory.class, context);
+            // 2 创建 DynamicTableSource
             return factory.createDynamicTableSource(context);
         } catch (Throwable t) {
             throw new ValidationException(
@@ -178,7 +182,7 @@ public final class FactoryUtil {
 
     /**
      * @deprecated Use {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
-     *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
+     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
      */
     @Deprecated
     public static DynamicTableSource createDynamicTableSource(
@@ -188,6 +192,7 @@ public final class FactoryUtil {
             ReadableConfig configuration,
             ClassLoader classLoader,
             boolean isTemporary) {
+        // 创建 DynamicTableSource
         return createDynamicTableSource(
                 preferredFactory,
                 objectIdentifier,
@@ -204,7 +209,7 @@ public final class FactoryUtil {
      * <p>It considers {@link Catalog#getFactory()} if provided.
      *
      * @deprecated Use {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
-     *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
+     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
      */
     @Deprecated
     public static DynamicTableSource createTableSource(
@@ -258,11 +263,14 @@ public final class FactoryUtil {
                         isTemporary);
 
         try {
+            // 1 根据 connector = xxx 找到对应的 DynamicTableSinkFactory
+            // 比如 connector = print -> PrintTableSinkFactory
             final DynamicTableSinkFactory factory =
                     preferredFactory != null
                             ? preferredFactory
                             : discoverTableFactory(DynamicTableSinkFactory.class, context);
 
+            // 2 创建动态表 Sink PrintSink
             return factory.createDynamicTableSink(context);
         } catch (Throwable t) {
             throw new ValidationException(
@@ -281,7 +289,7 @@ public final class FactoryUtil {
 
     /**
      * @deprecated Use {@link #createDynamicTableSink(DynamicTableSinkFactory, ObjectIdentifier,
-     *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
+     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
      */
     @Deprecated
     public static DynamicTableSink createDynamicTableSink(
@@ -307,7 +315,7 @@ public final class FactoryUtil {
      * <p>It considers {@link Catalog#getFactory()} if provided.
      *
      * @deprecated Use {@link #createDynamicTableSink(DynamicTableSinkFactory, ObjectIdentifier,
-     *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
+     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
      */
     @Deprecated
     public static DynamicTableSink createTableSink(
@@ -618,7 +626,9 @@ public final class FactoryUtil {
         optionalOptions.forEach(option -> readOption(options, option));
     }
 
-    /** Validates unconsumed option keys. */
+    /**
+     * Validates unconsumed option keys.
+     */
     public static void validateUnconsumedKeys(
             String factoryIdentifier,
             Set<String> allOptionKeys,
@@ -649,14 +659,18 @@ public final class FactoryUtil {
         }
     }
 
-    /** Validates unconsumed option keys. */
+    /**
+     * Validates unconsumed option keys.
+     */
     public static void validateUnconsumedKeys(
             String factoryIdentifier, Set<String> allOptionKeys, Set<String> consumedOptionKeys) {
         validateUnconsumedKeys(
                 factoryIdentifier, allOptionKeys, consumedOptionKeys, Collections.emptySet());
     }
 
-    /** Returns the required option prefix for options of the given format. */
+    /**
+     * Returns the required option prefix for options of the given format.
+     */
     public static String getFormatPrefix(
             ConfigOption<String> formatOption, String formatIdentifier) {
         final String formatOptionKey = formatOption.key();
@@ -883,7 +897,9 @@ public final class FactoryUtil {
     // Helper classes
     // --------------------------------------------------------------------------------------------
 
-    /** Base helper utility for validating all options for a {@link Factory}. */
+    /**
+     * Base helper utility for validating all options for a {@link Factory}.
+     */
     @PublicEvolving
     public static class FactoryHelper<F extends Factory> {
 
@@ -917,7 +933,9 @@ public final class FactoryUtil {
                             .collect(Collectors.toSet());
         }
 
-        /** Validates the options of the factory. It checks for unconsumed option keys. */
+        /**
+         * Validates the options of the factory. It checks for unconsumed option keys.
+         */
         public void validate() {
             validateFactoryOptions(factory, allOptions);
             validateUnconsumedKeys(
@@ -947,7 +965,9 @@ public final class FactoryUtil {
             validate();
         }
 
-        /** Returns all options currently being consumed by the factory. */
+        /**
+         * Returns all options currently being consumed by the factory.
+         */
         public ReadableConfig getOptions() {
             return allOptions;
         }
@@ -1033,8 +1053,8 @@ public final class FactoryUtil {
          * as factory identifier.
          */
         public <I, F extends DecodingFormatFactory<I>>
-                Optional<DecodingFormat<I>> discoverOptionalDecodingFormat(
-                        Class<F> formatFactoryClass, ConfigOption<String> formatOption) {
+        Optional<DecodingFormat<I>> discoverOptionalDecodingFormat(
+                Class<F> formatFactoryClass, ConfigOption<String> formatOption) {
             return discoverOptionalFormatFactory(formatFactoryClass, formatOption)
                     .map(
                             formatFactory -> {
@@ -1074,8 +1094,8 @@ public final class FactoryUtil {
          * as factory identifier.
          */
         public <I, F extends EncodingFormatFactory<I>>
-                Optional<EncodingFormat<I>> discoverOptionalEncodingFormat(
-                        Class<F> formatFactoryClass, ConfigOption<String> formatOption) {
+        Optional<EncodingFormat<I>> discoverOptionalEncodingFormat(
+                Class<F> formatFactoryClass, ConfigOption<String> formatOption) {
             return discoverOptionalFormatFactory(formatFactoryClass, formatOption)
                     .map(
                             formatFactory -> {
@@ -1204,7 +1224,9 @@ public final class FactoryUtil {
         }
     }
 
-    /** Default implementation of {@link DynamicTableFactory.Context}. */
+    /**
+     * Default implementation of {@link DynamicTableFactory.Context}.
+     */
     @Internal
     public static class DefaultDynamicTableContext implements DynamicTableFactory.Context {
 
@@ -1261,7 +1283,9 @@ public final class FactoryUtil {
         }
     }
 
-    /** Default implementation of {@link CatalogFactory.Context}. */
+    /**
+     * Default implementation of {@link CatalogFactory.Context}.
+     */
     @Internal
     public static class DefaultCatalogContext implements CatalogFactory.Context {
         private final String name;
@@ -1301,7 +1325,9 @@ public final class FactoryUtil {
         }
     }
 
-    /** Default implementation of {@link ModuleFactory.Context}. */
+    /**
+     * Default implementation of {@link ModuleFactory.Context}.
+     */
     @Internal
     public static class DefaultModuleContext implements ModuleFactory.Context {
         private final Map<String, String> options;

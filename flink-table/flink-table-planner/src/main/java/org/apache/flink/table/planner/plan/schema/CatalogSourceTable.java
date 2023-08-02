@@ -111,6 +111,7 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
                 computeContextResolvedTable(context, hintedOptions);
 
         // create table source
+        // 核心创建 Table Source
         final DynamicTableSource tableSource =
                 createDynamicTableSource(context, catalogTable.getResolvedTable());
 
@@ -153,6 +154,8 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
     private DynamicTableSource createDynamicTableSource(
             FlinkContext context, ResolvedCatalogTable catalogTable) {
 
+        // catalogTable 包含了 Table 的 options 信息
+
         final Optional<DynamicTableSourceFactory> factoryFromCatalog =
                 schemaTable
                         .getContextResolvedTable()
@@ -172,6 +175,7 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
         final DynamicTableSourceFactory factory =
                 firstPresent(factoryFromCatalog, factoryFromModule).orElse(null);
 
+        // 创建 DynamicTableSource
         return FactoryUtil.createDynamicTableSource(
                 factory,
                 schemaTable.getContextResolvedTable().getIdentifier(),

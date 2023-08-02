@@ -211,15 +211,18 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
         checkNotNull(tablePath);
         checkNotNull(table);
 
+        // 1 判断 database 是否存在
         if (!databaseExists(tablePath.getDatabaseName())) {
             throw new DatabaseNotExistException(getName(), tablePath.getDatabaseName());
         }
 
+        // 2 判断 table 是否存在
         if (tableExists(tablePath)) {
             if (!ignoreIfExists) {
                 throw new TableAlreadyExistException(getName(), tablePath);
             }
         } else {
+            // 3 如果不存在 则缓存
             tables.put(tablePath, table.copy());
 
             if (isPartitionedTable(tablePath)) {

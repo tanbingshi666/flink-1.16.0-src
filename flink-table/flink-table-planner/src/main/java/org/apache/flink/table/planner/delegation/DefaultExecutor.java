@@ -46,6 +46,7 @@ public class DefaultExecutor implements Executor {
     private final StreamExecutionEnvironment executionEnvironment;
 
     public DefaultExecutor(StreamExecutionEnvironment executionEnvironment) {
+        // StreamExecutionEnvironment
         this.executionEnvironment = executionEnvironment;
     }
 

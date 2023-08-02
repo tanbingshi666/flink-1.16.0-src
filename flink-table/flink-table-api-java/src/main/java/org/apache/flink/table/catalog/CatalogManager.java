@@ -116,17 +116,23 @@ public final class CatalogManager {
     /** Builder for a fluent definition of a {@link CatalogManager}. */
     public static final class Builder {
 
-        private @Nullable ClassLoader classLoader;
+        private @Nullable
+        ClassLoader classLoader;
 
-        private @Nullable ReadableConfig config;
+        private @Nullable
+        ReadableConfig config;
 
-        private @Nullable String defaultCatalogName;
+        private @Nullable
+        String defaultCatalogName;
 
-        private @Nullable Catalog defaultCatalog;
+        private @Nullable
+        Catalog defaultCatalog;
 
-        private @Nullable ExecutionConfig executionConfig;
+        private @Nullable
+        ExecutionConfig executionConfig;
 
-        private @Nullable DataTypeFactory dataTypeFactory;
+        private @Nullable
+        DataTypeFactory dataTypeFactory;
 
         public Builder classLoader(ClassLoader classLoader) {
             this.classLoader = classLoader;
@@ -196,6 +202,7 @@ public final class CatalogManager {
      *
      * @param catalogName name under which to register the given catalog
      * @param catalog catalog to register
+     *
      * @throws CatalogException if the registration of the catalog under the given name failed
      */
     public void registerCatalog(String catalogName, Catalog catalog) {
@@ -217,7 +224,8 @@ public final class CatalogManager {
      *
      * @param catalogName name under which to unregister the given catalog.
      * @param ignoreIfNotExists If false exception will be thrown if the table or database or
-     *     catalog to be altered does not exist.
+     *         catalog to be altered does not exist.
+     *
      * @throws CatalogException if the unregistration of the catalog under the given name failed
      */
     public void unregisterCatalog(String catalogName, boolean ignoreIfNotExists) {
@@ -237,6 +245,7 @@ public final class CatalogManager {
      * Gets a catalog by name.
      *
      * @param catalogName name of the catalog to retrieve
+     *
      * @return the requested catalog or empty if it does not exist
      */
     public Optional<Catalog> getCatalog(String catalogName) {
@@ -247,6 +256,7 @@ public final class CatalogManager {
      * Gets the current catalog that will be used when resolving table path.
      *
      * @return the current catalog
+     *
      * @see CatalogManager#qualifyIdentifier(UnresolvedIdentifier)
      */
     public String getCurrentCatalog() {
@@ -257,6 +267,7 @@ public final class CatalogManager {
      * Sets the current catalog name that will be used when resolving table path.
      *
      * @param catalogName catalog name to set as current catalog
+     *
      * @throws CatalogNotExistException thrown if the catalog doesn't exist
      * @see CatalogManager#qualifyIdentifier(UnresolvedIdentifier)
      */
@@ -286,6 +297,7 @@ public final class CatalogManager {
      * Gets the current database name that will be used when resolving table path.
      *
      * @return the current database
+     *
      * @see CatalogManager#qualifyIdentifier(UnresolvedIdentifier)
      */
     public String getCurrentDatabase() {
@@ -297,6 +309,7 @@ public final class CatalogManager {
      * has to exist in the current catalog.
      *
      * @param databaseName database name to set as current database name
+     *
      * @throws CatalogException thrown if the database doesn't exist in the current catalog
      * @see CatalogManager#qualifyIdentifier(UnresolvedIdentifier)
      * @see CatalogManager#setCurrentCatalog(String)
@@ -349,6 +362,7 @@ public final class CatalogManager {
      * #qualifyIdentifier(UnresolvedIdentifier)} first.
      *
      * @param objectIdentifier full path of the table to retrieve
+     *
      * @return table that the path points to.
      */
     public Optional<ContextResolvedTable> getTable(ObjectIdentifier objectIdentifier) {
@@ -373,7 +387,8 @@ public final class CatalogManager {
                                 new TableException(
                                         String.format(
                                                 "Cannot find table '%s' in any of the catalogs %s, nor as a temporary table.",
-                                                objectIdentifier, listCatalogs())));
+                                                objectIdentifier,
+                                                listCatalogs())));
     }
 
     /**
@@ -382,6 +397,7 @@ public final class CatalogManager {
      *
      * @param tableIdentifier full path of the table to retrieve
      * @param partitionSpec full partition spec
+     *
      * @return partition in the table.
      */
     public Optional<CatalogPartition> getPartition(
@@ -569,6 +585,7 @@ public final class CatalogManager {
      * <p><b>NOTE:</b>It is primarily used for interacting with Calcite's schema.
      *
      * @param catalogName filter for the catalog part of the schema
+     *
      * @return list of schemas with the given prefix
      */
     public Set<String> listSchemas(String catalogName) {
@@ -588,12 +605,13 @@ public final class CatalogManager {
      * <p><b>NOTE:</b>It is primarily used for interacting with Calcite's schema.
      *
      * @param catalogName filter for the catalog part of the schema
+     *
      * @return true if a subschema exists
      */
     public boolean schemaExists(String catalogName) {
         return getCatalog(catalogName).isPresent()
                 || temporaryTables.keySet().stream()
-                        .anyMatch(i -> i.getCatalogName().equals(catalogName));
+                .anyMatch(i -> i.getCatalogName().equals(catalogName));
     }
 
     /**
@@ -604,6 +622,7 @@ public final class CatalogManager {
      *
      * @param catalogName filter for the catalog part of the schema
      * @param databaseName filter for the database part of the schema
+     *
      * @return true if a subschema exists
      */
     public boolean schemaExists(String catalogName, String databaseName) {
@@ -628,6 +647,7 @@ public final class CatalogManager {
      * catalog/database name based on the {@code identifier's} length.
      *
      * @param identifier an unresolved identifier
+     *
      * @return a fully qualified object identifier
      */
     public ObjectIdentifier qualifyIdentifier(UnresolvedIdentifier identifier) {
@@ -648,7 +668,9 @@ public final class CatalogManager {
             CatalogBaseTable table, ObjectIdentifier objectIdentifier, boolean ignoreIfExists) {
         execute(
                 (catalog, path) -> {
+                    // 1 解析 catalog base table
                     ResolvedCatalogBaseTable<?> resolvedTable = resolveCatalogBaseTable(table);
+                    // 2 一般返回 resolvedTable
                     ResolvedCatalogBaseTable<?> resolvedListenedTable =
                             managedTableListener.notifyTableCreation(
                                     catalog,
@@ -657,11 +679,14 @@ public final class CatalogManager {
                                     false,
                                     ignoreIfExists);
 
+                    // 3 执行创建表 也就将 Table 缓存起来
+                    // 默认调用 GenericInMemoryCatalog
                     catalog.createTable(path, resolvedListenedTable, ignoreIfExists);
                 },
                 objectIdentifier,
                 false,
-                "CreateTable");
+                "CreateTable"
+        );
     }
 
     /**
@@ -712,6 +737,7 @@ public final class CatalogManager {
      * @param origin The resolved managed table with enriched options.
      * @param tableIdentifier The fully qualified path of the managed table.
      * @param partitionSpec User-specified unresolved partition spec.
+     *
      * @return dynamic options which describe the metadata of compaction
      */
     public Map<String, String> resolveCompactManagedTableOptions(
@@ -731,7 +757,7 @@ public final class CatalogManager {
      *
      * @param objectIdentifier The fully qualified path of the table to drop.
      * @param ignoreIfNotExists If false exception will be thrown if the table to be dropped does
-     *     not exist.
+     *         not exist.
      */
     public void dropTemporaryTable(ObjectIdentifier objectIdentifier, boolean ignoreIfNotExists) {
         dropTemporaryTableInternal(
@@ -743,7 +769,7 @@ public final class CatalogManager {
      *
      * @param objectIdentifier The fully qualified path of the view to drop.
      * @param ignoreIfNotExists If false exception will be thrown if the view to be dropped does not
-     *     exist.
+     *         exist.
      */
     public void dropTemporaryView(ObjectIdentifier objectIdentifier, boolean ignoreIfNotExists) {
         dropTemporaryTableInternal(
@@ -789,7 +815,7 @@ public final class CatalogManager {
      * @param table The table to put in the given path
      * @param objectIdentifier The fully qualified path where to alter the table.
      * @param ignoreIfNotExists If false exception will be thrown if the table or database or
-     *     catalog to be altered does not exist.
+     *         catalog to be altered does not exist.
      */
     public void alterTable(
             CatalogBaseTable table, ObjectIdentifier objectIdentifier, boolean ignoreIfNotExists) {
@@ -808,7 +834,7 @@ public final class CatalogManager {
      *
      * @param objectIdentifier The fully qualified path of the table to drop.
      * @param ignoreIfNotExists If false exception will be thrown if the table to drop does not
-     *     exist.
+     *         exist.
      */
     public void dropTable(ObjectIdentifier objectIdentifier, boolean ignoreIfNotExists) {
         dropTableInternal(objectIdentifier, ignoreIfNotExists, true);
@@ -819,7 +845,7 @@ public final class CatalogManager {
      *
      * @param objectIdentifier The fully qualified path of the view to drop.
      * @param ignoreIfNotExists If false exception will be thrown if the view to drop does not
-     *     exist.
+     *         exist.
      */
     public void dropView(ObjectIdentifier objectIdentifier, boolean ignoreIfNotExists) {
         dropTableInternal(objectIdentifier, ignoreIfNotExists, false);
