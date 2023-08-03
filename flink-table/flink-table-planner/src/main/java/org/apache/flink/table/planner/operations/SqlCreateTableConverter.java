@@ -76,8 +76,10 @@ class SqlCreateTableConverter {
         sqlCreateTable.getTableConstraints().forEach(validateTableConstraint);
         CatalogTable catalogTable = createCatalogTable(sqlCreateTable);
 
+        // 获取 catalog + database + table
         UnresolvedIdentifier unresolvedIdentifier =
                 UnresolvedIdentifier.of(sqlCreateTable.fullTableName());
+        // 默认情况下 返回 default_catalog.default_database.xxx
         ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
 
         return new CreateTableOperation(

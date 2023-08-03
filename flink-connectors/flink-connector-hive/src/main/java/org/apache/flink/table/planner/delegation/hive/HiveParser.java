@@ -183,7 +183,10 @@ public class HiveParser extends ParserImpl {
 
     @Override
     public List<Operation> parse(String statement) {
+        // 1 获取 CatalogManager
         CatalogManager catalogManager = getCatalogManager();
+
+        // 2 获取 HiveCatalog
         Catalog currentCatalog =
                 catalogManager.getCatalog(catalogManager.getCurrentCatalog()).orElse(null);
         if (!(currentCatalog instanceof HiveCatalog)) {
@@ -191,16 +194,21 @@ public class HiveParser extends ParserImpl {
             return super.parse(statement);
         }
 
+        // 3 判断语句是否以 SET RESET ADD 开始
         Optional<Operation> nonSqlOperation =
                 tryProcessHiveNonSqlStatement(
                         ((HiveCatalog) currentCatalog).getHiveConf(), statement);
         if (nonSqlOperation.isPresent()) {
             return Collections.singletonList(nonSqlOperation.get());
         }
+
+        // 4 创建 HiveConf
         HiveConf hiveConf = new HiveConf(((HiveCatalog) currentCatalog).getHiveConf());
         hiveConf.setVar(HiveConf.ConfVars.DYNAMICPARTITIONINGMODE, "nonstrict");
         hiveConf.set("hive.allow.udf.load.on.demand", "false");
         hiveConf.setVar(HiveConf.ConfVars.HIVE_EXECUTION_ENGINE, "mr");
+
+        // 5 加载 HiveShim
         HiveShim hiveShim =
                 HiveShimLoader.loadHiveShim(((HiveCatalog) currentCatalog).getHiveVersion());
         try {
@@ -210,6 +218,8 @@ public class HiveParser extends ParserImpl {
             HiveSessionState.startSessionState(hiveConf, catalogManager);
             // We override Hive's grouping function. Refer to the implementation for more details.
             hiveShim.registerTemporaryFunction("grouping", HiveGenericUDFGrouping.class);
+
+            // 6 处理 SQL 语句
             return processCmd(statement, hiveConf, hiveShim, (HiveCatalog) currentCatalog);
         } finally {
             HiveSessionState.clearSessionState();
@@ -322,7 +332,10 @@ public class HiveParser extends ParserImpl {
         try {
             HiveParserContext context = new HiveParserContext(hiveConf);
             // parse statement to get AST
+            // 1 解析 SQL 为抽象语法树 AST
             HiveParserASTNode node = HiveASTParseUtils.parse(cmd, context);
+
+            // 2 SQL 语句为 DDL
             if (DDL_NODES.contains(node.getType())) {
                 HiveParserQueryState queryState = new HiveParserQueryState(hiveConf);
                 HiveParserDDLSemanticAnalyzer ddlAnalyzer =
@@ -339,6 +352,7 @@ public class HiveParser extends ParserImpl {
                                 plannerContext.getFlinkContext());
                 return Collections.singletonList(ddlAnalyzer.convertToOperation(node));
             } else {
+                // 3 SQL 语句为 SELECT
                 return processQuery(context, hiveConf, hiveShim, node);
             }
         } catch (HiveASTParseException e) {

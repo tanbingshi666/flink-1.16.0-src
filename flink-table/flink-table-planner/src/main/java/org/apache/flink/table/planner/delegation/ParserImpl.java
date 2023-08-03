@@ -113,6 +113,7 @@ public class ParserImpl implements Parser {
         Preconditions.checkArgument(parsed.size() == 1, "only single statement supported");
         return Collections.singletonList(
                 // 3 SqlNode 转化 Operation
+                // 如果 CREATE TABLE 返回 CreateTableOperation
                 SqlToOperationConverter.convert(planner, catalogManager, parsed.get(0))
                         .orElseThrow(() -> new TableException("Unsupported query: " + statement)));
     }

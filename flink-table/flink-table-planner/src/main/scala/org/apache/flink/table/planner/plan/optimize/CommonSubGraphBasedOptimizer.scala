@@ -71,19 +71,22 @@ abstract class CommonSubGraphBasedOptimizer extends Optimizer {
    * [[IntermediateRelTable]].
    *
    * @param roots
-   *   the original relational nodes.
+   * the original relational nodes.
    * @return
-   *   a list of RelNode represents an optimized RelNode DAG.
+   * a list of RelNode represents an optimized RelNode DAG.
    */
   override def optimize(roots: Seq[RelNode]): Seq[RelNode] = {
     // resolve hints before optimizing
+    // 1 在优化之前 解析 hints
     val joinHintResolver = new JoinHintResolver()
     val resolvedHintRoots = joinHintResolver.resolve(toJava(roots))
 
     // clear query block alias bef optimizing
+    // 2 在优化之前 清除 query block 别名
     val clearQueryBlockAliasResolver = new ClearQueryBlockAliasResolver
     val resolvedAliasRoots = clearQueryBlockAliasResolver.resolve(resolvedHintRoots)
 
+    // 3 执行逻辑优化
     val sinkBlocks = doOptimize(resolvedAliasRoots)
     val optimizedPlan = sinkBlocks.map {
       block =>
@@ -91,8 +94,11 @@ abstract class CommonSubGraphBasedOptimizer extends Optimizer {
         require(plan != null)
         plan
     }
+
+    // 4 扩展中间表
     val expanded = expandIntermediateTableScan(optimizedPlan)
 
+    // 5 优化物理执行计划
     val postOptimizedPlan = postOptimize(expanded)
 
     // Rewrite same rel object to different rel objects
@@ -115,14 +121,14 @@ abstract class CommonSubGraphBasedOptimizer extends Optimizer {
    * [[RelNodeBlock]], return optimized [[RelNodeBlock]]s.
    *
    * @return
-   *   optimized [[RelNodeBlock]]s.
+   * optimized [[RelNodeBlock]]s.
    */
   protected def doOptimize(roots: Seq[RelNode]): Seq[RelNodeBlock]
 
   /** Returns a new table scan which wraps the given IntermediateRelTable. */
   protected def wrapIntermediateRelTableToTableScan(
-      relTable: IntermediateRelTable,
-      name: String): TableScan = {
+                                                     relTable: IntermediateRelTable,
+                                                     name: String): TableScan = {
     val cluster = relTable.relNode.getCluster
     new LogicalTableScan(cluster, cluster.traitSet, relTable)
   }

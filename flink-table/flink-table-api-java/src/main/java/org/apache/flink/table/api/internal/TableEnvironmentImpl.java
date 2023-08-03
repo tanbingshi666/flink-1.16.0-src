@@ -748,6 +748,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
 
         // 2 如果是 CREATE TABLE 则返回 CreateTableOperation
         // 如果是 INSERT INTO 则返回 SinkModifyOperation
+        // 如果 SinkModifyOperation 依赖其他 Source Table 则就会创建对应的 Flink SourceTable
         Operation operation = operations.get(0);
 
         // 3 执行

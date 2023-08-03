@@ -49,6 +49,7 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
   override protected def doOptimize(roots: Seq[RelNode]): Seq[RelNodeBlock] = {
     val tableConfig = planner.getTableConfig
     // build RelNodeBlock plan
+    // 1 构建 RelNodeBlock 逻辑执行计划
     val sinkBlocks = RelNodeBlockPlanBuilder.buildRelNodeBlockPlan(roots, tableConfig)
     // infer trait properties for sink block
     sinkBlocks.foreach {
@@ -56,6 +57,7 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
         // don't require update before by default
         sinkBlock.setUpdateBeforeRequired(false)
 
+        // 2 判断是否开启 mini batch
         val miniBatchInterval: MiniBatchInterval =
           if (tableConfig.get(ExecutionConfigOptions.TABLE_EXEC_MINIBATCH_ENABLED)) {
             val miniBatchLatency =
@@ -71,11 +73,13 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
         sinkBlock.setMiniBatchInterval(miniBatchInterval)
     }
 
+    // 3 一般情况下 比如 INSERT INTO xxx SELECT * FROM yyy 而言 只有一个 RelNodeBlock 逻辑执行计划
     if (sinkBlocks.size == 1) {
       // If there is only one sink block, the given relational expressions are a simple tree
       // (only one root), not a dag. So many operations (e.g. infer and propagate
       // requireUpdateBefore) can be omitted to save optimization time.
       val block = sinkBlocks.head
+      // 4 执行优化逻辑执行计划
       val optimizedTree = optimizeTree(
         block.getPlan,
         block.isUpdateBeforeRequired,
@@ -147,30 +151,34 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
    * Generates the optimized [[RelNode]] tree from the original relational node tree.
    *
    * @param relNode
-   *   The root node of the relational expression tree.
+   * The root node of the relational expression tree.
    * @param updateBeforeRequired
-   *   True if UPDATE_BEFORE message is required for updates
+   * True if UPDATE_BEFORE message is required for updates
    * @param miniBatchInterval
-   *   mini-batch interval of the block.
+   * mini-batch interval of the block.
    * @param isSinkBlock
-   *   True if the given block is sink block.
+   * True if the given block is sink block.
    * @return
-   *   The optimized [[RelNode]] tree
+   * The optimized [[RelNode]] tree
    */
   private def optimizeTree(
-      relNode: RelNode,
-      updateBeforeRequired: Boolean,
-      miniBatchInterval: MiniBatchInterval,
-      isSinkBlock: Boolean): RelNode = {
+                            relNode: RelNode,
+                            updateBeforeRequired: Boolean,
+                            miniBatchInterval: MiniBatchInterval,
+                            isSinkBlock: Boolean): RelNode = {
 
     val tableConfig = planner.getTableConfig
     val calciteConfig = TableConfigUtils.getCalciteConfig(tableConfig)
+
+    // 1 预定义了很多优化器
+    // 比如谓词下推
     val programs = calciteConfig.getStreamProgram
       .getOrElse(FlinkStreamProgram.buildProgram(tableConfig))
     Preconditions.checkNotNull(programs)
 
     val context = unwrapContext(relNode)
 
+    // 2 遍历每个优化器执行优化
     programs.optimize(
       relNode,
       new StreamOptimizeContext() {
@@ -205,19 +213,19 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
    * block to child blocks. NOTES: this method should not change the original RelNode tree.
    *
    * @param block
-   *   The [[RelNodeBlock]] instance.
+   * The [[RelNodeBlock]] instance.
    * @param updateBeforeRequired
-   *   True if UPDATE_BEFORE message is required for updates
+   * True if UPDATE_BEFORE message is required for updates
    * @param miniBatchInterval
-   *   mini-batch interval of the block.
+   * mini-batch interval of the block.
    * @param isSinkBlock
-   *   True if the given block is sink block.
+   * True if the given block is sink block.
    */
   private def propagateUpdateKindAndMiniBatchInterval(
-      block: RelNodeBlock,
-      updateBeforeRequired: Boolean,
-      miniBatchInterval: MiniBatchInterval,
-      isSinkBlock: Boolean): Unit = {
+                                                       block: RelNodeBlock,
+                                                       updateBeforeRequired: Boolean,
+                                                       miniBatchInterval: MiniBatchInterval,
+                                                       isSinkBlock: Boolean): Unit = {
     val blockLogicalPlan = block.getPlan
     // infer updateKind and miniBatchInterval with required trait
     val optimizedPlan =
@@ -236,7 +244,7 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
 
     def propagateTraits(rel: RelNode): Unit = rel match {
       case _: StreamPhysicalDataStreamScan | _: StreamPhysicalIntermediateTableScan |
-          _: StreamPhysicalLegacyTableSourceScan | _: StreamPhysicalTableSourceScan =>
+           _: StreamPhysicalLegacyTableSourceScan | _: StreamPhysicalTableSourceScan =>
         val scan = rel.asInstanceOf[TableScan]
         val updateKindTrait = scan.getTraitSet.getTrait(UpdateKindTraitDef.INSTANCE)
         val miniBatchIntervalTrait = scan.getTraitSet.getTrait(MiniBatchIntervalTraitDef.INSTANCE)
@@ -260,7 +268,7 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
    * Reset the intermediate result including newOutputNode and outputTableName
    *
    * @param block
-   *   the [[RelNodeBlock]] instance.
+   * the [[RelNodeBlock]] instance.
    */
   private def resetIntermediateResult(block: RelNodeBlock): Unit = {
     block.setNewOutputNode(null)
@@ -276,10 +284,10 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
   }
 
   private def createIntermediateRelTable(
-      name: String,
-      relNode: RelNode,
-      modifyKindSet: ModifyKindSet,
-      isUpdateBeforeRequired: Boolean): IntermediateRelTable = {
+                                          name: String,
+                                          relNode: RelNode,
+                                          modifyKindSet: ModifyKindSet,
+                                          isUpdateBeforeRequired: Boolean): IntermediateRelTable = {
     val uniqueKeys = getUniqueKeys(relNode)
     val fmq = FlinkRelMetadataQuery
       .reuseOrCreate(planner.createRelBuilder.getCluster.getMetadataQuery)

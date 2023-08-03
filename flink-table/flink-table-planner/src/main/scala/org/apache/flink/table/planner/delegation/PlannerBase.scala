@@ -324,8 +324,17 @@ abstract class PlannerBase(
 
   @VisibleForTesting
   private[flink] def optimize(relNodes: Seq[RelNode]): Seq[RelNode] = {
-    val optimizedRelNodes = getOptimizer.optimize(relNodes)
+    // 1 执行优化 RelNode
+    val optimizedRelNodes = {
+      // 1.1 获取优化器
+      // 流式优化器 -> StreamCommonSubGraphBasedOptimizer
+      // 批式优化器 -> BatchCommonSubGraphBasedOptimizer
+      getOptimizer
+        // 1.2 执行优化
+        .optimize(relNodes)
+    }
     require(optimizedRelNodes.size == relNodes.size)
+    // 2 返回优化后的物理执行计划
     optimizedRelNodes
   }
 
