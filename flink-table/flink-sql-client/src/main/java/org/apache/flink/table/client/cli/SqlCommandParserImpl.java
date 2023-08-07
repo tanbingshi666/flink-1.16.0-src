@@ -37,11 +37,13 @@ public class SqlCommandParserImpl implements SqlCommandParser {
     @Override
     public Optional<Operation> parseCommand(String stmt) throws SqlParserException {
         // normalize
+        // 1 一条 SQL 去空
         stmt = stmt.trim();
         // meet empty statement, e.g ";\n"
         if (stmt.isEmpty() || stmt.equals(";")) {
             return Optional.empty();
         }
+        // 2 解析 SQL 成 Operation
         return Optional.ofNullable(executor.parseStatement(sessionId, stmt));
     }
 }

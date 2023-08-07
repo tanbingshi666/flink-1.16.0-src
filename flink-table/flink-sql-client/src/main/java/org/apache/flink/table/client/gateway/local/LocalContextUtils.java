@@ -52,12 +52,14 @@ public class LocalContextUtils {
     public static DefaultContext buildDefaultContext(CliOptions options) {
 
         final List<URL> jars;
+        // 1 判断执行 sql-client.sh 脚本是否携带 --jar xxx
         if (options.getJars() != null) {
             jars = options.getJars();
         } else {
             jars = Collections.emptyList();
         }
         final List<URL> libDirs;
+        // 2 判断执行 sql-client.sh 脚本是否携带 --library yyy
         if (options.getLibraryDirs() != null) {
             libDirs = options.getLibraryDirs();
         } else {
@@ -65,18 +67,25 @@ public class LocalContextUtils {
         }
 
         // 1. find the configuration directory
+        // 3 找到 ${FLINK_HOME}/conf 目录
         String flinkConfigDir = CliFrontend.getConfigurationDirectoryFromEnv();
 
         // 2. load the global configuration
+        // 4 加载 ${FLINK_HOME}/conf 目录下的 flink-conf.yaml 文件并封装成 Configuration
         Configuration configuration = GlobalConfiguration.loadConfiguration(flinkConfigDir);
 
         // 3. load the custom command lines
+        // 5 加载自定义命令行
+        // 5.1 GenericCLI
+        // 5.2 FlinkYarnSessionCli
+        // 5.3 DefaultCLI
         List<CustomCommandLine> commandLines =
                 CliFrontend.loadCustomCommandLines(configuration, flinkConfigDir);
 
         configuration.addAll(options.getPythonConfiguration());
         final List<URL> dependencies = discoverDependencies(jars, libDirs);
 
+        // 6 创建 DefaultContext
         return new DefaultContext(dependencies, configuration, commandLines);
     }
 
@@ -84,6 +93,7 @@ public class LocalContextUtils {
             @Nullable String sessionId, DefaultContext defaultContext) {
         final SessionContext context;
         if (sessionId == null) {
+            // 创建 SessionContext
             context = SessionContext.create(defaultContext, DEFAULT_SESSION_ID);
         } else {
             context = SessionContext.create(defaultContext, sessionId);

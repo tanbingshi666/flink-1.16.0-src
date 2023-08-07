@@ -61,6 +61,7 @@ class SqlMultiLineParser extends DefaultParser {
         if (context != ParseContext.ACCEPT_LINE) {
             return parseInternal(line, cursor, context);
         }
+        // 1 判断一条 SQL 是否以 ; 结束
         if (!line.trim().endsWith(STATEMENT_DELIMITER)) {
             throw new EOFError(-1, -1, "New line without EOF character.", NEW_LINE_PROMPT);
         }
@@ -68,6 +69,9 @@ class SqlMultiLineParser extends DefaultParser {
             command = line;
             parseException = null;
             // try to parse the line read
+            // 2 解析 SQL 也即将 SQL 转化为 Operator
+            // 2.1 如果是 CREATE CATALOG 语句 返回 CreateCatalogOperation
+            // 2.2 如果是 USE CATALOG 语句 返回 UseCatalogOperation
             parsedOperation = parser.parseCommand(line).orElse(null);
         } catch (SqlExecutionException e) {
             if (e.getCause() instanceof SqlParserEOFException) {
@@ -77,6 +81,7 @@ class SqlMultiLineParser extends DefaultParser {
             parseException = e;
             throw new SyntaxError(-1, -1, e.getMessage());
         }
+        // 3 解析
         return parseInternal(line, cursor, context);
     }
 

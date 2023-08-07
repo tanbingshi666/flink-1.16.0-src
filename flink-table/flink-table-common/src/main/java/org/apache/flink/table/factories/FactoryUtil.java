@@ -182,7 +182,7 @@ public final class FactoryUtil {
 
     /**
      * @deprecated Use {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
-     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
+     *         ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
      */
     @Deprecated
     public static DynamicTableSource createDynamicTableSource(
@@ -209,7 +209,7 @@ public final class FactoryUtil {
      * <p>It considers {@link Catalog#getFactory()} if provided.
      *
      * @deprecated Use {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
-     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
+     *         ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
      */
     @Deprecated
     public static DynamicTableSource createTableSource(
@@ -267,10 +267,12 @@ public final class FactoryUtil {
             // 比如 connector = print -> PrintTableSinkFactory
             final DynamicTableSinkFactory factory =
                     preferredFactory != null
+                            // 如果 flink 整合 paimon preferredFactory = FlinkTableFactory
                             ? preferredFactory
                             : discoverTableFactory(DynamicTableSinkFactory.class, context);
 
             // 2 创建动态表 Sink PrintSink
+            // 如果 flink 整合 paimon 则调用 FlinkTableFactory.createDynamicTableSink()
             return factory.createDynamicTableSink(context);
         } catch (Throwable t) {
             throw new ValidationException(
@@ -289,7 +291,7 @@ public final class FactoryUtil {
 
     /**
      * @deprecated Use {@link #createDynamicTableSink(DynamicTableSinkFactory, ObjectIdentifier,
-     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
+     *         ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
      */
     @Deprecated
     public static DynamicTableSink createDynamicTableSink(
@@ -315,7 +317,7 @@ public final class FactoryUtil {
      * <p>It considers {@link Catalog#getFactory()} if provided.
      *
      * @deprecated Use {@link #createDynamicTableSink(DynamicTableSinkFactory, ObjectIdentifier,
-     * ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
+     *         ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} instead.
      */
     @Deprecated
     public static DynamicTableSink createTableSink(
@@ -416,6 +418,8 @@ public final class FactoryUtil {
             ClassLoader classLoader) {
         // Use the legacy mechanism first for compatibility
         try {
+            // flink 为了兼容老的 CatalogFactory 执行如下 但是一般情况下报错
+            // 也即正常情况下 执行 catch 里面的
             final CatalogFactory legacyFactory =
                     TableFactoryService.find(CatalogFactory.class, options, classLoader);
             return legacyFactory.createCatalog(catalogName, options);
@@ -425,10 +429,14 @@ public final class FactoryUtil {
             final DefaultCatalogContext discoveryContext =
                     new DefaultCatalogContext(catalogName, options, configuration, classLoader);
             try {
+                // 1 找到 catalog factory 加载 CatalogFactory 的所有子类
+                // 过滤 type = xxx 对应的 CatalogFactory
+                // 如果是 Flink-Paimon type = paimon 则返回 FlinkCatalogFactory
                 final CatalogFactory factory = getCatalogFactory(discoveryContext);
 
                 // The type option is only used for discovery, we don't actually want to forward it
                 // to the catalog factory itself.
+                // 也即剔除 type = xxx 属性
                 final Map<String, String> factoryOptions =
                         options.entrySet().stream()
                                 .filter(
@@ -437,9 +445,13 @@ public final class FactoryUtil {
                                                         .key()
                                                         .equals(entry.getKey()))
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                // 创建 DefaultCatalogContext
                 final DefaultCatalogContext context =
                         new DefaultCatalogContext(
                                 catalogName, factoryOptions, configuration, classLoader);
+
+                // 2 创建 catalog
+                // 如果是 Flink-Paimon 则调用 FlinkCatalogFactory.createCatalog() 最终返回 FlinkCatalog
                 return factory.createCatalog(context);
             } catch (Throwable t) {
                 throw new ValidationException(
@@ -725,6 +737,8 @@ public final class FactoryUtil {
     }
 
     private static CatalogFactory getCatalogFactory(CatalogFactory.Context context) {
+        // 1 获取 CREATE CATALOG xxx WITH (k=v,...) 中的 属性值
+        // 其中获取 type = xxx 对应的值
         final String catalogType =
                 context.getOptions().get(CommonCatalogOptions.CATALOG_TYPE.key());
         if (catalogType == null) {
@@ -734,6 +748,9 @@ public final class FactoryUtil {
                             CommonCatalogOptions.CATALOG_TYPE.key()));
         }
 
+        // 2 基于 Java 的 SPI 机制加载 CatalogFactory 的所有子类
+        // 并根据 type = xxx 过滤对应的 CatalogFactory 子类
+        // 如果存在多个 则报错
         return discoverFactory(context.getClassLoader(), CatalogFactory.class, catalogType);
     }
 
@@ -1209,7 +1226,8 @@ public final class FactoryUtil {
                                 "The persisted plan has no format option '%s' specified, while the catalog table has it with value '%s'. "
                                         + "This is invalid, as either only the persisted plan table defines the format, "
                                         + "or both the persisted plan table and the catalog table defines the same format.",
-                                formatOption, identifierFromEnrichingOptions.get()));
+                                formatOption,
+                                identifierFromEnrichingOptions.get()));
             }
 
             if (!Objects.equals(identifierFromPlan, identifierFromEnrichingOptions.get())) {

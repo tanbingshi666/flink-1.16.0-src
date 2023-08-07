@@ -63,6 +63,8 @@ public class LocalExecutor implements Executor {
 
     // Map to hold all the available sessions. the key is session identifier, and the value is the
     // SessionContext
+    // 缓存 SessionId 对应的 SessionContext
+    // 比如 default -> SessionContext
     private final ConcurrentHashMap<String, SessionContext> contextMap;
 
     // result maintenance
@@ -83,13 +85,16 @@ public class LocalExecutor implements Executor {
 
     @Override
     public String openSession(@Nullable String sessionId) throws SqlExecutionException {
+        // 1 构建 SessionContext
         SessionContext sessionContext =
                 LocalContextUtils.buildSessionContext(sessionId, defaultContext);
+        // 2 获取 SessionID (没有则创建 默认 default)
         sessionId = sessionContext.getSessionId();
         if (this.contextMap.containsKey(sessionId)) {
             throw new SqlExecutionException(
                     "Found another session with the same session identifier: " + sessionId);
         } else {
+            // 3 缓存 SessionId 对应的 SessionContext
             this.contextMap.put(sessionId, sessionContext);
         }
         return sessionId;
@@ -163,12 +168,17 @@ public class LocalExecutor implements Executor {
     @Override
     public Operation parseStatement(String sessionId, String statement)
             throws SqlExecutionException {
+        // 1 根据 SessionId 获取执行环境
         final ExecutionContext context = getExecutionContext(sessionId);
+        // 2 获取表执行环境 StreamTableEnvironment
         final TableEnvironment tableEnv = context.getTableEnvironment();
+        // 3 获取 SQL 解析器
+        // 有两种 SQL 解析器 ParserImpl(默认) HiveParser
         Parser parser = ((TableEnvironmentInternal) tableEnv).getParser();
 
         List<Operation> operations;
         try {
+            // 4 解析 SQL语句 为 Operation
             operations = parser.parse(statement);
         } catch (Throwable t) {
             throw new SqlExecutionException("Failed to parse statement: " + statement, t);
@@ -176,6 +186,8 @@ public class LocalExecutor implements Executor {
         if (operations.isEmpty()) {
             throw new SqlExecutionException("Failed to parse statement: " + statement);
         }
+        // 5 获取 Operation
+        // 5.1 如果是 CREATE CATALOG 语句 返回 CreateCatalogOperation
         return operations.get(0);
     }
 
@@ -203,6 +215,7 @@ public class LocalExecutor implements Executor {
         final TableEnvironmentInternal tEnv =
                 (TableEnvironmentInternal) context.getTableEnvironment();
         try {
+            // 执行 Operation
             return tEnv.executeInternal(operation);
         } catch (Throwable t) {
             throw new SqlExecutionException(MESSAGE_SQL_EXECUTION_ERROR, t);

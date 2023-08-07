@@ -283,7 +283,9 @@ public final class CatalogManager {
         }
 
         if (!currentCatalogName.equals(catalogName)) {
+            // 设置当前 catalog 名称
             currentCatalogName = catalogName;
+            // 设置当前 database 名称
             currentDatabaseName = potentialCurrentCatalog.getDefaultDatabase();
 
             LOG.info(

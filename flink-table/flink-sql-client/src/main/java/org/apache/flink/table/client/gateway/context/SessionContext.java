@@ -195,13 +195,13 @@ public class SessionContext {
         // --------------------------------------------------------------------------------------------------------------
         // Init config
         // --------------------------------------------------------------------------------------------------------------
-
+        // 1 初始化配置 也即全局配置参数
         Configuration configuration = defaultContext.getFlinkConfig().clone();
 
         // --------------------------------------------------------------------------------------------------------------
         // Init classloader
         // --------------------------------------------------------------------------------------------------------------
-
+        // 2 初始化类加载器
         // here use ClientMutableURLClassLoader to support remove jar
         final ClientWrapperClassLoader userClassLoader =
                 new ClientWrapperClassLoader(
@@ -214,15 +214,16 @@ public class SessionContext {
         // --------------------------------------------------------------------------------------------------------------
         // Init session state
         // --------------------------------------------------------------------------------------------------------------
-
+        // 3 初始化 Session 状态
+        // 3.1 创建 ClientResourceManager
         final ClientResourceManager resourceManager =
                 new ClientResourceManager(configuration, userClassLoader);
-
+        // 3.2 创建 ModuleManager (核心 core-module)
         final ModuleManager moduleManager = new ModuleManager();
-
+        // 3.3 构建 EnvironmentSettings
         final EnvironmentSettings settings =
                 EnvironmentSettings.newInstance().withConfiguration(configuration).build();
-
+        // 3.4 构建 CatalogManager
         final CatalogManager catalogManager =
                 CatalogManager.newBuilder()
                         .classLoader(userClassLoader)
@@ -234,18 +235,21 @@ public class SessionContext {
                                         settings.getBuiltInDatabaseName()))
                         .build();
 
+        // 3.5 创建 FunctionCatalog
         final FunctionCatalog functionCatalog =
                 new FunctionCatalog(configuration, resourceManager, catalogManager, moduleManager);
+        // 3.6 创建 SessionState
         final SessionState sessionState =
                 new SessionState(catalogManager, moduleManager, resourceManager, functionCatalog);
 
         // --------------------------------------------------------------------------------------------------------------
         // Init ExecutionContext
         // --------------------------------------------------------------------------------------------------------------
-
+        // 4 初始化执行器
         ExecutionContext executionContext =
                 new ExecutionContext(configuration, userClassLoader, sessionState);
 
+        // 5 创建 SessionContext
         return new SessionContext(
                 defaultContext,
                 sessionId,

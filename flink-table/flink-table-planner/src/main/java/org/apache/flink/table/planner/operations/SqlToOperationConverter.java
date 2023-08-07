@@ -270,6 +270,7 @@ public class SqlToOperationConverter {
         SqlToOperationConverter converter =
                 new SqlToOperationConverter(flinkPlanner, catalogManager);
         if (validated instanceof SqlCreateCatalog) {
+            // 转化 CREATE CATALOG 语句
             return Optional.of(converter.convertCreateCatalog((SqlCreateCatalog) validated));
         } else if (validated instanceof SqlDropCatalog) {
             return Optional.of(converter.convertDropCatalog((SqlDropCatalog) validated));
@@ -285,6 +286,7 @@ public class SqlToOperationConverter {
         } else if (validated instanceof SqlUnloadModule) {
             return Optional.of(converter.convertUnloadModule((SqlUnloadModule) validated));
         } else if (validated instanceof SqlUseCatalog) {
+            // 转化 USE CATALOG
             return Optional.of(converter.convertUseCatalog((SqlUseCatalog) validated));
         } else if (validated instanceof SqlUseModules) {
             return Optional.of(converter.convertUseModules((SqlUseModules) validated));
@@ -376,6 +378,7 @@ public class SqlToOperationConverter {
                     converter.convertCompileAndExecutePlan((SqlCompileAndExecutePlan) validated));
         } else if (validated.getKind().belongsTo(SqlKind.QUERY)) {
             // 执行查询语句 比如 SELECT * FROM yyyy
+            // 返回 PlannerQueryOperation
             return Optional.of(converter.convertSqlQuery(validated));
         } else if (validated instanceof SqlAnalyzeTable) {
             return Optional.of(converter.convertAnalyzeTable((SqlAnalyzeTable) validated));
@@ -867,9 +870,11 @@ public class SqlToOperationConverter {
 
     /** Convert CREATE CATALOG statement. */
     private Operation convertCreateCatalog(SqlCreateCatalog sqlCreateCatalog) {
+        // 1 获取 catalog 名称
         String catalogName = sqlCreateCatalog.catalogName();
 
         // set with properties
+        // 2 提取 CREATE CATALOG xxx WITH (k=v,...)
         Map<String, String> properties = new HashMap<>();
         sqlCreateCatalog
                 .getPropertyList()
@@ -880,6 +885,7 @@ public class SqlToOperationConverter {
                                         ((SqlTableOption) p).getKeyString(),
                                         ((SqlTableOption) p).getValueString()));
 
+        // 3 创建 CreateCatalogOperation
         return new CreateCatalogOperation(catalogName, properties);
     }
 

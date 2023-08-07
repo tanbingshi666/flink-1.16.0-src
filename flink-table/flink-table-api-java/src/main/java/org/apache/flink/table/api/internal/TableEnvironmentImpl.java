@@ -952,6 +952,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         } else if (operation instanceof CreateTableOperation) {
             // 1 如果是 CREATE TABLE 强转为 CreateTableOperation
             CreateTableOperation createTableOperation = (CreateTableOperation) operation;
+            // 如果是临时表
             if (createTableOperation.isTemporary()) {
                 catalogManager.createTemporaryTable(
                         createTableOperation.getCatalogTable(),
@@ -1202,6 +1203,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         } else if (operation instanceof ShowJarsOperation) {
             return buildShowResult("jars", listJars());
         } else if (operation instanceof CreateCatalogOperation) {
+            // 执行创建 Catalog
             return createCatalog((CreateCatalogOperation) operation);
         } else if (operation instanceof DropCatalogOperation) {
             DropCatalogOperation dropCatalogOperation = (DropCatalogOperation) operation;
@@ -1220,6 +1222,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         } else if (operation instanceof UseModulesOperation) {
             return useModules((UseModulesOperation) operation);
         } else if (operation instanceof UseCatalogOperation) {
+            // 执行创建 UseCatalogOperation
             UseCatalogOperation useCatalogOperation = (UseCatalogOperation) operation;
             catalogManager.setCurrentCatalog(useCatalogOperation.getCatalogName());
             return TableResultImpl.TABLE_RESULT_OK;
@@ -1452,15 +1455,19 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
     private TableResultInternal createCatalog(CreateCatalogOperation operation) {
         String exMsg = getDDLOpExecuteErrorMsg(operation.asSummaryString());
         try {
+            // 1 获取 catalog 名称
             String catalogName = operation.getCatalogName();
+            // 2 获取 catalog 属性
             Map<String, String> properties = operation.getProperties();
 
+            // 3 创建 catalog
             Catalog catalog =
                     FactoryUtil.createCatalog(
                             catalogName,
                             properties,
                             tableConfig,
                             resourceManager.getUserClassLoader());
+            // 4 注册 catalog
             catalogManager.registerCatalog(catalogName, catalog);
 
             return TableResultImpl.TABLE_RESULT_OK;

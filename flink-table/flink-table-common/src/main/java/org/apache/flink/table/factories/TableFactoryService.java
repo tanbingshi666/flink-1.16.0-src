@@ -148,7 +148,9 @@ public class TableFactoryService {
             Map<String, String> properties,
             Optional<ClassLoader> classLoader) {
 
+        // 如果添加 Flink-Paimon 依赖 那么就会加载 FlinkTableFactory
         List<TableFactory> tableFactories = discoverFactories(classLoader);
+        // 过滤目标 TableFactory
         List<T> filtered = filter(tableFactories, factoryClass, properties);
 
         if (filtered.size() > 1) {
@@ -186,8 +188,11 @@ public class TableFactoryService {
         Preconditions.checkNotNull(factoryClass);
         Preconditions.checkNotNull(properties);
 
+        // 1 先过滤 CatalogFactory 的所有子类
+        // 如果是 Flink-Paimon 整合 那么就存在对应的 FlinkCatalogFactory
         List<T> classFactories = filterByFactoryClass(factoryClass, properties, foundFactories);
 
+        // 2
         List<T> contextFactories = filterByContext(factoryClass, properties, classFactories);
 
         return filterBySupportedProperties(

@@ -77,6 +77,7 @@ public class ExecutionContext {
         this.sessionState = context.sessionState;
         this.classLoader = context.classLoader;
 
+        // 创建 StreamTableEnvironment
         this.tableEnv = createTableEnvironment();
     }
 
@@ -89,6 +90,7 @@ public class ExecutionContext {
     // ------------------------------------------------------------------------------------------------------------------
 
     private StreamTableEnvironment createTableEnvironment() {
+        // 1 构建 EnvironmentSettings
         EnvironmentSettings settings =
                 EnvironmentSettings.newInstance().withConfiguration(flinkConfig).build();
 
@@ -96,11 +98,14 @@ public class ExecutionContext {
         // instead we just use StreamExecutionEnvironment#executeAsync(StreamGraph) method
         // to execute existing StreamGraph.
         // This requires StreamExecutionEnvironment to have a full flink configuration.
+        // 2 创建 StreamExecutionEnvironment
         StreamExecutionEnvironment streamExecEnv =
                 new StreamExecutionEnvironment(new Configuration(flinkConfig), classLoader);
 
+        // 3 寻找执行器 默认 DefaultExecutor
         final Executor executor = lookupExecutor(streamExecEnv, classLoader);
 
+        // 4 创建 StreamTableEnvironment
         return createStreamTableEnvironment(
                 streamExecEnv,
                 settings,
@@ -122,10 +127,12 @@ public class ExecutionContext {
             FunctionCatalog functionCatalog,
             ClassLoader userClassLoader) {
 
+        // 1 创建表配置 TableConfig
         TableConfig tableConfig = TableConfig.getDefault();
         tableConfig.setRootConfiguration(executor.getConfiguration());
         tableConfig.addConfiguration(settings.getConfiguration());
 
+        // 2 创建 StreamPlanner
         final Planner planner =
                 PlannerFactoryUtil.createPlanner(
                         executor,
@@ -135,6 +142,7 @@ public class ExecutionContext {
                         catalogManager,
                         functionCatalog);
 
+        // 3 创建 StreamTableEnvironmentImpl
         return new StreamTableEnvironmentImpl(
                 catalogManager,
                 moduleManager,

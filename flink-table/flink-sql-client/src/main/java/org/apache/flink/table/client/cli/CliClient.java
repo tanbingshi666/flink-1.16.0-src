@@ -114,7 +114,8 @@ public class CliClient implements AutoCloseable {
 
     private final String prompt;
 
-    private final @Nullable MaskingCallback inputTransformer;
+    private final @Nullable
+    MaskingCallback inputTransformer;
 
     private final Supplier<Terminal> terminalFactory;
 
@@ -224,7 +225,9 @@ public class CliClient implements AutoCloseable {
     /** Opens the interactive CLI shell. */
     public void executeInInteractiveMode() {
         try {
+            // 1 获取终端命令
             terminal = terminalFactory.get();
+            // 2 执行终端命令
             executeInteractive();
         } finally {
             closeTerminal();
@@ -270,13 +273,18 @@ public class CliClient implements AutoCloseable {
      */
     private void executeInteractive() {
         // make space from previous output and test the writer
+        // 1 清空换行
         terminal.writer().println();
         terminal.writer().flush();
 
         // print welcome
+        // 2 屏幕打印 welcome
         terminal.writer().append(CliStrings.MESSAGE_WELCOME);
 
+        // 3 构建终端交互命令行读取输入 LineReader
         LineReader lineReader = createLineReader(terminal, true);
+
+        // 4 接收终端交互命令输入并执行
         getAndExecuteStatements(lineReader, ExecutionMode.INTERACTIVE_EXECUTION);
     }
 
@@ -284,6 +292,7 @@ public class CliClient implements AutoCloseable {
         // begin reading loop
         boolean exitOnFailure = !mode.equals(ExecutionMode.INTERACTIVE_EXECUTION);
         isRunning = true;
+        // 1 持续执行
         while (isRunning) {
             // make some space to previous command
             terminal.writer().append("\n");
@@ -292,18 +301,26 @@ public class CliClient implements AutoCloseable {
             Optional<Operation> parsedOperation = Optional.empty();
             try {
                 // read a statement from terminal and parse it
+                // 2 读取一条 SQL 语句
+                // 最终调用 SqlMultiLineParser.parse() 解析一条 SQL
                 String line = lineReader.readLine(prompt, null, inputTransformer, null);
                 if (line.trim().isEmpty()) {
                     continue;
                 }
                 // get the parsed operation.
                 // if the command is invalid, the exception caught from parser would be thrown.
+                // 3 获取解析 SQL 语句并转化为 Operation
+                // 3.1 如果是 CREATE CATALOG 语句 返回 CreateCatalogOperation
+                // 3.2 如果是 USE CATALOG 语句 返回 UseCatalogOperation
+                // 3.3 如果是 CREATE TABLE 语句 返回 CreateTableOperation
+                // 3.4 如果是 INSERT INTO xxx SELECT * FROM yyy 语句 返回 SinkModifyOperation
                 parsedOperation = parser.getParsedOperation();
                 Preconditions.checkArgument(
                         line.equals(parser.getCommand()),
                         String.format(
                                 "This is a bug, please report to the flink community. Statement read[%s] isn't the same as statement parsed[%s]",
-                                line, parser.getCommand()));
+                                line,
+                                parser.getCommand()));
             } catch (SqlExecutionException e) {
                 // print the detailed information on about the parse errors in the terminal.
                 printExecutionException(e);
@@ -326,6 +343,7 @@ public class CliClient implements AutoCloseable {
             }
 
             // execute the operation
+            // 4 执行 Operation
             boolean success = executeOperation(parsedOperation.get(), mode);
             if (exitOnFailure && !success) {
                 return false;
@@ -369,6 +387,7 @@ public class CliClient implements AutoCloseable {
             final Terminal.SignalHandler previousHandler =
                     terminal.handle(Terminal.Signal.INT, (signal) -> thread.interrupt());
             try {
+                // 处理 Operation
                 callOperation(operation, executionMode);
             } finally {
                 terminal.handle(Terminal.Signal.INT, previousHandler);
@@ -470,6 +489,8 @@ public class CliClient implements AutoCloseable {
             callInsert((CreateTableASOperation) operation);
         } else {
             // fallback to default implementation
+            // 1 如果是 CREATE CATALOG 语句 往下执行
+            // 2 如果是 USE CATALOG 语句 往下执行
             executeOperation(operation);
         }
     }
@@ -543,7 +564,7 @@ public class CliClient implements AutoCloseable {
 
         if (resultDesc.isTableauMode()) {
             try (CliTableauResultView tableauResultView =
-                    new CliTableauResultView(terminal, executor, sessionId, resultDesc)) {
+                         new CliTableauResultView(terminal, executor, sessionId, resultDesc)) {
                 tableauResultView.displayResults();
             }
         } else {
@@ -636,6 +657,7 @@ public class CliClient implements AutoCloseable {
     }
 
     private void executeOperation(Operation operation) {
+        // 执行 Operation
         TableResultInternal result = executor.executeOperation(sessionId, operation);
         if (TABLE_RESULT_OK == result) {
             // print more meaningful message than tableau OK result

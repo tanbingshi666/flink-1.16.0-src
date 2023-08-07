@@ -457,6 +457,7 @@ abstract class PlannerBase(
 
           // Since the catalog is more specific, we give it precedence over a factory provided by
           // any modules.
+          // 如果是 Flink 整合 Paimon 则 factory = FlinkTableFactory
           val factory = factoryFromCatalog.orElse(factoryFromModule).orNull
 
           // 4 创建动态表 Sink

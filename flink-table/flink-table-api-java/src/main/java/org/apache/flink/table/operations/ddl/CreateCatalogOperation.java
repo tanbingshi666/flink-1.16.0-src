@@ -33,7 +33,9 @@ public class CreateCatalogOperation implements CreateOperation {
     private final Map<String, String> properties;
 
     public CreateCatalogOperation(String catalogName, Map<String, String> properties) {
+        // 1 catalog 名称
         this.catalogName = checkNotNull(catalogName);
+        // 2 catalog 属性
         this.properties = checkNotNull(properties);
     }
 

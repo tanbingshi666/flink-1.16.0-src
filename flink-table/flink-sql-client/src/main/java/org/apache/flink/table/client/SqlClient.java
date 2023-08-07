@@ -79,12 +79,15 @@ public class SqlClient {
     private void start() {
         if (isEmbedded) {
             // create local executor with default environment
-
+            // 1 创建本地执行器默认环境
             DefaultContext defaultContext = LocalContextUtils.buildDefaultContext(options);
+            // 2 创建本地执行器 LocalExecutor
             final Executor executor = new LocalExecutor(defaultContext);
+            // 3 启动本地执行器
             executor.start();
 
             // Open an new session
+            // 4 开启一个 session
             String sessionId = executor.openSession(options.getSessionId());
             try {
                 // add shutdown hook
@@ -92,6 +95,7 @@ public class SqlClient {
                         .addShutdownHook(new EmbeddedShutdownThread(sessionId, executor));
 
                 // do the actual work
+                // 5 接收命令行输入并执行
                 openCli(sessionId, executor);
             } finally {
                 executor.closeSession(sessionId);
@@ -109,6 +113,7 @@ public class SqlClient {
      */
     private void openCli(String sessionId, Executor executor) {
         Path historyFilePath;
+        // 1 判断执行 sql-client.sql 脚本是否携带 --history xxx 参数
         if (options.getHistoryFilePath() != null) {
             historyFilePath = Paths.get(options.getHistoryFilePath());
         } else {
@@ -118,7 +123,9 @@ public class SqlClient {
                             SystemUtils.IS_OS_WINDOWS ? "flink-sql-history" : ".flink-sql-history");
         }
 
+        // 2 判断执行 sql-client.sql 脚本是否携带 --file xxx 参数
         boolean hasSqlFile = options.getSqlFile() != null;
+        // 3 判断执行 sql-client.sql 脚本是否携带 --update xxx 参数
         boolean hasUpdateStatement = options.getUpdateStatement() != null;
         if (hasSqlFile && hasUpdateStatement) {
             throw new IllegalArgumentException(
@@ -130,8 +137,11 @@ public class SqlClient {
                             CliOptionsParser.OPTION_FILE.getOpt()));
         }
 
+        // 4 创建 CliClient
         try (CliClient cli = new CliClient(terminalFactory, sessionId, executor, historyFilePath)) {
+            // 5 判断执行 sql-client.sql 脚本是否携带 --init xxx 参数
             if (options.getInitFile() != null) {
+                // 如果存在初始化文件 则执行
                 boolean success = cli.executeInitialization(readFromURL(options.getInitFile()));
                 if (!success) {
                     System.out.println(
@@ -148,6 +158,7 @@ public class SqlClient {
             }
 
             if (!hasSqlFile && !hasUpdateStatement) {
+                // 6 执行 sql 交互命令模式
                 cli.executeInInteractiveMode();
             } else {
                 cli.executeInNonInteractiveMode(readExecutionContent());
@@ -158,7 +169,12 @@ public class SqlClient {
     // --------------------------------------------------------------------------------------------
 
     public static void main(String[] args) {
-        startClient(args, DEFAULT_TERMINAL_FACTORY);
+        // 1 启动 SqlClient
+        startClient(
+                // 1.1 入口参数
+                args,
+                // 1.2 创建命令行终端 Terminal
+                DEFAULT_TERMINAL_FACTORY);
     }
 
     @VisibleForTesting
@@ -178,12 +194,15 @@ public class SqlClient {
 
         switch (mode) {
             case MODE_EMBEDDED:
+                // 1 解析 SqlClient 入口参数
                 final CliOptions options = CliOptionsParser.parseEmbeddedModeClient(modeArgs);
                 if (options.isPrintHelp()) {
                     CliOptionsParser.printHelpEmbeddedModeClient();
                 } else {
                     try {
+                        // 2 创建 SqlClient 客户端
                         final SqlClient client = new SqlClient(true, options, terminalFactory);
+                        // 3 启动 SqlClient
                         client.start();
                     } catch (SqlClientException e) {
                         // make space in terminal
