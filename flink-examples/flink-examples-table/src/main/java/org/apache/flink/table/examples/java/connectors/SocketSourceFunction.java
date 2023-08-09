@@ -69,6 +69,7 @@ public final class SocketSourceFunction extends RichSourceFunction<RowData>
 
     @Override
     public void open(Configuration parameters) throws Exception {
+        // 1 调用 ChangelogCsvDeserializer.open()
         deserializer.open(
                 RuntimeContextInitializationContextAdapters.deserializationAdapter(
                         getRuntimeContext()));
@@ -76,21 +77,26 @@ public final class SocketSourceFunction extends RichSourceFunction<RowData>
 
     @Override
     public void run(SourceContext<RowData> ctx) throws Exception {
+        // 2 执行业务逻辑
         while (isRunning) {
             // open and consume from socket
+            // 2.1 打开一个 NIO Socket
             try (final Socket socket = new Socket()) {
                 currentSocket = socket;
+                // 2.2 连接指定 hostname:port
                 socket.connect(new InetSocketAddress(hostname, port), 0);
                 try (InputStream stream = socket.getInputStream()) {
                     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
                     int b;
                     while ((b = stream.read()) >= 0) {
                         // buffer until delimiter
+                        // 2.3 持续读取数据 直到遇到换行符
                         if (b != byteDelimiter) {
                             buffer.write(b);
                         }
                         // decode and emit record
                         else {
+                            // 2.4 读取到的数据进行反序列化(解码)并输出到下游
                             ctx.collect(deserializer.deserialize(buffer.toByteArray()));
                             buffer.reset();
                         }

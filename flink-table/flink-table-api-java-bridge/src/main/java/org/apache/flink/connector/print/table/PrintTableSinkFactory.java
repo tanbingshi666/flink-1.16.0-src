@@ -65,16 +65,19 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
 
     @Override
     public String factoryIdentifier() {
+        // 1 print connector 唯一标识符
         return IDENTIFIER;
     }
 
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
+        // 2 必选项
         return new HashSet<>();
     }
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
+        // 3 可选项
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(PRINT_IDENTIFIER);
         options.add(STANDARD_ERROR);
@@ -84,9 +87,14 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
 
     @Override
     public DynamicTableSink createDynamicTableSink(Context context) {
+        // 1 创建 Table 工具 TableFactoryHelper 一般用来校验 options
         FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
         helper.validate();
+
+        // 2 获取 print connector 选项配置
         ReadableConfig options = helper.getOptions();
+
+        // 3 创建 PrintSink
         return new PrintSink(
                 context.getCatalogTable().getResolvedSchema().toPhysicalRowDataType(),
                 context.getCatalogTable().getPartitionKeys(),
@@ -100,7 +108,8 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
         private final DataType type;
         private String printIdentifier;
         private final boolean stdErr;
-        private final @Nullable Integer parallelism;
+        private final @Nullable
+        Integer parallelism;
         private final List<String> partitionKeys;
         private Map<String, String> staticPartitions = new LinkedHashMap<>();
 
@@ -124,12 +133,17 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
 
         @Override
         public SinkRuntimeProvider getSinkRuntimeProvider(DynamicTableSink.Context context) {
+            // 1 创建数据结构转化器
             DataStructureConverter converter = context.createDataStructureConverter(type);
+
+            // 2 print connector 打印前缀
             staticPartitions.forEach(
                     (key, value) -> {
                         printIdentifier = null != printIdentifier ? printIdentifier + ":" : "";
                         printIdentifier += key + "=" + value;
                     });
+
+            // 3 创建 SinkFunction
             return SinkFunctionProvider.of(
                     new RowDataPrintFunction(converter, printIdentifier, stdErr), parallelism);
         }
@@ -170,6 +184,7 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
         private RowDataPrintFunction(
                 DataStructureConverter converter, String printIdentifier, boolean stdErr) {
             this.converter = converter;
+            // 1 创建打印输出流
             this.writer = new PrintSinkOutputWriter<>(printIdentifier, stdErr);
         }
 
@@ -177,11 +192,13 @@ public class PrintTableSinkFactory implements DynamicTableSinkFactory {
         public void open(Configuration parameters) throws Exception {
             super.open(parameters);
             StreamingRuntimeContext context = (StreamingRuntimeContext) getRuntimeContext();
+            // 2 初始化打印输出流
             writer.open(context.getIndexOfThisSubtask(), context.getNumberOfParallelSubtasks());
         }
 
         @Override
         public void invoke(RowData value, Context context) {
+            // 3 接收数据并打印输出
             Object data = converter.toExternal(value);
             assert data != null;
             writer.write(data.toString());

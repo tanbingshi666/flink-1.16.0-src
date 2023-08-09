@@ -70,13 +70,24 @@ public final class ChangelogCsvDeserializer implements DeserializationSchema<Row
     @Override
     public RowData deserialize(byte[] message) {
         // parse the columns including a changelog flag
+        // 1 读取到字节数据转化为字符串 字符串根据 | 进行切割
+        // 比如样例数据
+        // INSERT|Alice|12
+        // INSERT|Bob|5
+        // DELETE|Alice|12
+        // INSERT|Alice|18
         final String[] columns = new String(message).split(Pattern.quote(columnDelimiter));
+        // 2 获取 RowKind 类型
         final RowKind kind = RowKind.valueOf(columns[0]);
         final Row row = new Row(kind, parsingTypes.size());
+        // 3 解析数据
         for (int i = 0; i < parsingTypes.size(); i++) {
+            // 比如 0 -> Alice 1 -> 12
             row.setField(i, parse(parsingTypes.get(i).getTypeRoot(), columns[i + 1]));
         }
+
         // convert to internal data structure
+        // 4 转化为 flink 内部数据结构
         return (RowData) converter.toInternal(row);
     }
 

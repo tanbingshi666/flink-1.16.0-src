@@ -56,6 +56,7 @@ public final class SocketDynamicTableSource implements ScanTableSource {
         this.hostname = hostname;
         this.port = port;
         this.byteDelimiter = byteDelimiter;
+        // ChangelogCsvFormat
         this.decodingFormat = decodingFormat;
         this.producedDataType = producedDataType;
     }
@@ -64,6 +65,7 @@ public final class SocketDynamicTableSource implements ScanTableSource {
     public ChangelogMode getChangelogMode() {
         // in our example the format decides about the changelog mode
         // but it could also be the source itself
+        // 调用 ChangelogCsvFormat.getChangelogMode() 返回 RowKind.INSERT + RowKind.DELETE
         return decodingFormat.getChangelogMode();
     }
 
@@ -72,9 +74,12 @@ public final class SocketDynamicTableSource implements ScanTableSource {
 
         // create runtime classes that are shipped to the cluster
 
+        // 1 创建运行时解码器 schema
+        // 大概的意思读取到 Source 端吐出字节数据 经过 DeserializationSchema 解码器 最终封装成 flink 内部数据结构 RowData
         final DeserializationSchema<RowData> deserializer =
                 decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType);
 
+        // 2 定义 SourceFunction
         final SourceFunction<RowData> sourceFunction =
                 new SocketSourceFunction(hostname, port, byteDelimiter, deserializer);
 

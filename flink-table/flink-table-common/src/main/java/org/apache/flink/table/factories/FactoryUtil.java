@@ -1075,11 +1075,14 @@ public final class FactoryUtil {
             return discoverOptionalFormatFactory(formatFactoryClass, formatOption)
                     .map(
                             formatFactory -> {
+                                // 1 一般情况下返回 format.
                                 String formatPrefix = formatPrefix(formatFactory, formatOption);
                                 try {
+                                    // 2 创建 format decode
                                     return formatFactory.createDecodingFormat(
                                             context,
-                                            createFormatOptions(formatPrefix, formatFactory));
+                                            createFormatOptions(formatPrefix, formatFactory)
+                                    );
                                 } catch (Throwable t) {
                                     throw new ValidationException(
                                             String.format(

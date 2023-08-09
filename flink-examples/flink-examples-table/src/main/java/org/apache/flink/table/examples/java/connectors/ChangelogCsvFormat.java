@@ -47,18 +47,22 @@ public final class ChangelogCsvFormat implements DecodingFormat<DeserializationS
     public DeserializationSchema<RowData> createRuntimeDecoder(
             DynamicTableSource.Context context, DataType producedDataType) {
         // create type information for the DeserializationSchema
+        // 1 根据表字段创建 TypeInformation
         final TypeInformation<RowData> producedTypeInfo =
                 context.createTypeInformation(producedDataType);
 
         // most of the code in DeserializationSchema will not work on internal data structures
         // create a converter for conversion at the end
+        // 2 创建数据结构转化器
         final DataStructureConverter converter =
                 context.createDataStructureConverter(producedDataType);
 
         // use logical types during runtime for parsing
+        // 3 在运行期间使用逻辑类型解析
         final List<LogicalType> parsingTypes = producedDataType.getLogicalType().getChildren();
 
         // create runtime class
+        // 3 创建运行时编码器
         return new ChangelogCsvDeserializer(
                 parsingTypes, converter, producedTypeInfo, columnDelimiter);
     }

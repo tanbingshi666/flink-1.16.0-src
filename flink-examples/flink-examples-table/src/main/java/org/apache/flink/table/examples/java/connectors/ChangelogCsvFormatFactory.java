@@ -44,21 +44,25 @@ import java.util.Set;
 public final class ChangelogCsvFormatFactory implements DeserializationFormatFactory {
 
     // define all options statically
+    // 1 定义静态选项
     public static final ConfigOption<String> COLUMN_DELIMITER =
             ConfigOptions.key("column-delimiter").stringType().defaultValue("|");
 
     @Override
     public String factoryIdentifier() {
+        // 2 changelog-svc 唯一标识符
         return "changelog-csv";
     }
 
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
+        // 3 必选项
         return Collections.emptySet();
     }
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
+        // 4 可选项
         final Set<ConfigOption<?>> options = new HashSet<>();
         options.add(COLUMN_DELIMITER);
         return options;
@@ -69,12 +73,15 @@ public final class ChangelogCsvFormatFactory implements DeserializationFormatFac
             DynamicTableFactory.Context context, ReadableConfig formatOptions) {
         // either implement your custom validation logic here ...
         // or use the provided helper method
+        // 1 校验 options
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
         // get the validated options
+        // 2 获取选项 changelog-csv.column-delimiter 对应的值
         final String columnDelimiter = formatOptions.get(COLUMN_DELIMITER);
 
         // create and return the format
+        // 3 创建 format
         return new ChangelogCsvFormat(columnDelimiter);
     }
 }
