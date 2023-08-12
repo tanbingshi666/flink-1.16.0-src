@@ -38,7 +38,9 @@ class AddSplitsTask<SplitT extends SourceSplit> implements SplitFetcherTask {
             SplitReader<?, SplitT> splitReader,
             List<SplitT> splitsToAdd,
             Map<String, SplitT> assignedSplits) {
+        // 切片读取器 FileStoreSourceSplitReader
         this.splitReader = splitReader;
+        // 申请到的切片
         this.splitsToAdd = splitsToAdd;
         this.assignedSplits = assignedSplits;
     }
@@ -48,6 +50,7 @@ class AddSplitsTask<SplitT extends SourceSplit> implements SplitFetcherTask {
         for (SplitT s : splitsToAdd) {
             assignedSplits.put(s.splitId(), s);
         }
+        // 调用 FileStoreSourceSplitReader.handleSplitsChanges() 真正读取数据
         splitReader.handleSplitsChanges(new SplitsAddition<>(splitsToAdd));
         return true;
     }

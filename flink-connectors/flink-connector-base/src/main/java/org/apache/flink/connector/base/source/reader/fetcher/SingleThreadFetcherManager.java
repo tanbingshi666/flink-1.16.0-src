@@ -56,6 +56,7 @@ public class SingleThreadFetcherManager<E, SplitT extends SourceSplit>
     public SingleThreadFetcherManager(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
             Supplier<SplitReader<E, SplitT>> splitReaderSupplier) {
+        // 往下追
         super(elementsQueue, splitReaderSupplier);
     }
 
@@ -79,13 +80,21 @@ public class SingleThreadFetcherManager<E, SplitT extends SourceSplit>
 
     @Override
     public void addSplits(List<SplitT> splitsToAdd) {
+        // 1 获取正在运行的 SplitFetcher 线程
         SplitFetcher<E, SplitT> fetcher = getRunningFetcher();
+        // 2 如果没有正在运行的 SplitFetcher 线程 则创建
         if (fetcher == null) {
+            // 2.1 创建 SplitFetcher 线程
+            // SplitFetcher 线程添加对饮的 SplitReader 读取数据器
             fetcher = createSplitFetcher();
             // Add the splits to the fetchers.
+            // 2.2 将申请到的 splits 添加到 SplitFetcher 线程
             fetcher.addSplits(splitsToAdd);
+            // 2.3 启动 SplitFetcher 线程
             startFetcher(fetcher);
         } else {
+            // 3 如果已经存在有了 SplitFetcher 则获取
+            // 一般情况下 FetcherManager 只维护了一个 SplitFetcher 线程
             fetcher.addSplits(splitsToAdd);
         }
     }

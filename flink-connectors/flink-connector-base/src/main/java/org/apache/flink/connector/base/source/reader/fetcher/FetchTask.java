@@ -55,12 +55,14 @@ class FetchTask<E, SplitT extends SourceSplit> implements SplitFetcherTask {
     public boolean run() throws IOException {
         try {
             if (!isWakenUp() && lastRecords == null) {
+                // 拉取数据 调用 FileStoreSourceSplitReader.fetch()
                 lastRecords = splitReader.fetch();
             }
 
             if (!isWakenUp()) {
                 // The order matters here. We must first put the last records into the queue.
                 // This ensures the handling of the fetched records is atomic to wakeup.
+                // 将拉取到的数据加入 FutureCompletingBlockingQueue 队列
                 if (elementsQueue.put(fetcherIndex, lastRecords)) {
                     if (!lastRecords.finishedSplits().isEmpty()) {
                         // The callback does not throw InterruptedException.

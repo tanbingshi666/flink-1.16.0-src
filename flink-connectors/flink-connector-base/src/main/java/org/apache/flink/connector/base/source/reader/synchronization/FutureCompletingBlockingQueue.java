@@ -112,7 +112,9 @@ public class FutureCompletingBlockingQueue<T> {
 
     public FutureCompletingBlockingQueue(int capacity) {
         checkArgument(capacity > 0, "capacity must be > 0");
+        // 默认容量为 2
         this.capacity = capacity;
+        // 创建阻塞队列 ArrayDeque
         this.queue = new ArrayDeque<>(capacity);
         this.lock = new ReentrantLock();
         this.putConditionAndFlags = new ConditionAndFlag[1];

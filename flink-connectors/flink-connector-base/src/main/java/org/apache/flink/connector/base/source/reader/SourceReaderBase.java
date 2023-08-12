@@ -107,7 +107,9 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
             RecordEmitter<E, T, SplitStateT> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
+        // 阻塞队列
         this.elementsQueue = elementsQueue;
+        // 拉取数据往阻塞队列添加 FetcherManager SingleThreadFetcherManager
         this.splitFetcherManager = splitFetcherManager;
         this.recordEmitter = recordEmitter;
         this.splitStates = new HashMap<>();
@@ -125,8 +127,10 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
     @Override
     public InputStatus pollNext(ReaderOutput<T> output) throws Exception {
         // make sure we have a fetch we are working on, or move to the next
+        // 1 获取 RecordsWithSplitIds 如果为 null 则获取
         RecordsWithSplitIds<E> recordsWithSplitId = this.currentFetch;
         if (recordsWithSplitId == null) {
+            // 1.1 获取 RecordsWithSplitIds
             recordsWithSplitId = getNextFetch(output);
             if (recordsWithSplitId == null) {
                 return trace(finishedOrAvailableLater());
@@ -136,10 +140,13 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
         // we need to loop here, because we may have to go across splits
         while (true) {
             // Process one record.
+            // 2 获取目标一条数据 (如果是读取文件批量读取 然后调用 FileRecords.nextRecordFromSplit())
             final E record = recordsWithSplitId.nextRecordFromSplit();
             if (record != null) {
                 // emit the record.
                 numRecordsInCounter.inc(1);
+                // 3 将数据传递给下游
+                // paimon 调用 IterateRecordsFunction.emitRecord()
                 recordEmitter.emitRecord(record, currentSplitOutput, currentSplitContext.state);
                 LOG.trace("Emitted record: {}", record);
 

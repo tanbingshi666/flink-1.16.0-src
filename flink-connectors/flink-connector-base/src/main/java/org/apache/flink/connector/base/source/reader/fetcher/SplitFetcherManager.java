@@ -96,7 +96,9 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
     public SplitFetcherManager(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
             Supplier<SplitReader<E, SplitT>> splitReaderFactory) {
-        this(elementsQueue, splitReaderFactory, (ignore) -> {});
+        // 往下追
+        this(elementsQueue, splitReaderFactory, (ignore) -> {
+        });
     }
 
     /**
@@ -111,6 +113,7 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
             Supplier<SplitReader<E, SplitT>> splitReaderFactory,
             Consumer<Collection<String>> splitFinishedHook) {
+        // 阻塞队列
         this.elementsQueue = elementsQueue;
         this.errorHandler =
                 new Consumer<Throwable>() {
@@ -134,6 +137,7 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
         // Create the executor with a thread factory that fails the source reader if one of
         // the fetcher thread exits abnormally.
         final String taskThreadName = Thread.currentThread().getName();
+        // 创建执行线程池
         this.executors =
                 Executors.newCachedThreadPool(
                         r -> new Thread(r, "Source Data Fetcher for " + taskThreadName));
@@ -151,6 +155,7 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
      * closed.
      *
      * @return the created split fetcher.
+     *
      * @throws IllegalStateException if the split fetcher manager has closed.
      */
     protected synchronized SplitFetcher<E, SplitT> createSplitFetcher() {
@@ -158,9 +163,12 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
             throw new IllegalStateException("The split fetcher manager has closed.");
         }
         // Create SplitReader.
+        // 1 获取读取数据切片器 SplitReader
+        // 如果是 flink-paimon 返回 FileStoreSourceSplitReader
         SplitReader<E, SplitT> splitReader = splitReaderFactory.get();
 
         int fetcherId = fetcherIdGenerator.getAndIncrement();
+        // 2 创建 SplitFetcher 线程
         SplitFetcher<E, SplitT> splitFetcher =
                 new SplitFetcher<>(
                         fetcherId,
@@ -177,6 +185,7 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
                             elementsQueue.notifyAvailable();
                         },
                         this.splitFinishedHook);
+        // 3 缓存 SplitFetcher 线程
         fetchers.put(fetcherId, splitFetcher);
         return splitFetcher;
     }
@@ -204,6 +213,7 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
      * Close the split fetcher manager.
      *
      * @param timeoutMs the max time in milliseconds to wait.
+     *
      * @throws Exception when failed to close the split fetcher manager.
      */
     public synchronized void close(long timeoutMs) throws Exception {

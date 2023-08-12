@@ -62,7 +62,7 @@ public interface SplitEnumerator<SplitT extends SourceSplit, CheckpointT>
 
     /**
      * Add a new source reader with the given subtask ID.
-     *
+     * 添加 SourceReader
      * @param subtaskId the subtask ID of the new source reader.
      */
     void addReader(int subtaskId);

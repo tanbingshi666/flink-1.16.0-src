@@ -72,7 +72,9 @@ public abstract class SingleThreadMultiplexSourceReaderBase<
             RecordEmitter<E, T, SplitStateT> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
+        // 如果是 flink-paimon 整合 调用如下
         this(
+                // 创建异步阻塞队列 FutureCompletingBlockingQueue 默认容量大小为 2
                 new FutureCompletingBlockingQueue<>(
                         config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY)),
                 splitReaderSupplier,
@@ -92,8 +94,11 @@ public abstract class SingleThreadMultiplexSourceReaderBase<
             RecordEmitter<E, T, SplitStateT> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
+        // 往下追
         super(
+                // FutureCompletingBlockingQueue
                 elementsQueue,
+                // 创建单线程拉取数据 SingleThreadFetcherManager
                 new SingleThreadFetcherManager<>(elementsQueue, splitReaderSupplier),
                 recordEmitter,
                 config,

@@ -74,10 +74,14 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
             Consumer<Throwable> errorHandler,
             Runnable shutdownHook,
             Consumer<Collection<String>> splitFinishedHook) {
+        // SplitFetcher ID
         this.id = id;
+        // 阻塞队列 里面维护了具体的切片信息 AddSplitsTask
         this.taskQueue = new LinkedBlockingDeque<>();
+        // FutureCompletingBlockingQueue
         this.elementsQueue = elementsQueue;
         this.assignedSplits = new HashMap<>();
+        // 切片读取器 FileStoreSourceSplitReader
         this.splitReader = splitReader;
         this.errorHandler = errorHandler;
         this.shutdownHook = shutdownHook;
@@ -85,6 +89,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
         this.wakeUp = new AtomicBoolean(false);
         this.closed = new AtomicBoolean(false);
 
+        // 创建 FetchTask
         this.fetchTask =
                 new FetchTask<>(
                         splitReader,
@@ -102,6 +107,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
         LOG.info("Starting split fetcher {}", id);
         try {
             while (!closed.get()) {
+                // 执行启动 SplitFetcher
                 runOnce();
             }
         } catch (Throwable t) {
@@ -126,8 +132,10 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
             // The fetch task should run if the split assignment is not empty or there is a split
             // change.
             if (shouldRunFetchTask()) {
+                // FetchTask
                 runningTask = fetchTask;
             } else {
+                // 获取 AddSplitsTask
                 runningTask = taskQueue.take();
             }
             // Now the running task is not null. If wakeUp() is called after this point,
@@ -139,6 +147,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
             // before
             // the it starts running.
             LOG.debug("Prepare to run {}", runningTask);
+            // 执行 AddSplitsTask.run()
             if (!wakeUp.get() && runningTask.run()) {
                 LOG.debug("Finished running task {}", runningTask);
                 // the task has finished running. Set it to null so it won't be enqueued.
@@ -171,6 +180,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
      * @param splitsToAdd the splits to add.
      */
     public void addSplits(List<SplitT> splitsToAdd) {
+        // 添加 AddSplitsTask
         enqueueTask(new AddSplitsTask<>(splitReader, splitsToAdd, assignedSplits));
         wakeUp(true);
     }
