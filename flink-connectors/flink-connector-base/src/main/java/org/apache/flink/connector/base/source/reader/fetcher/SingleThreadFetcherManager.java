@@ -85,7 +85,7 @@ public class SingleThreadFetcherManager<E, SplitT extends SourceSplit>
         // 2 如果没有正在运行的 SplitFetcher 线程 则创建
         if (fetcher == null) {
             // 2.1 创建 SplitFetcher 线程
-            // SplitFetcher 线程添加对饮的 SplitReader 读取数据器
+            // SplitFetcher 线程添加对应的 SplitReader 读取数据器
             fetcher = createSplitFetcher();
             // Add the splits to the fetchers.
             // 2.2 将申请到的 splits 添加到 SplitFetcher 线程

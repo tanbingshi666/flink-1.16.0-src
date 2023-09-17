@@ -48,6 +48,7 @@ class AddSplitsTask<SplitT extends SourceSplit> implements SplitFetcherTask {
     @Override
     public boolean run() {
         for (SplitT s : splitsToAdd) {
+            // 缓存切片信息到 assignedSplits
             assignedSplits.put(s.splitId(), s);
         }
         // 调用 FileStoreSourceSplitReader.handleSplitsChanges() 真正读取数据

@@ -51,14 +51,14 @@ import java.util.function.Supplier;
  * </ul>
  *
  * @param <E> The type of the records (the raw type that typically contains checkpointing
- *     information).
+ *         information).
  * @param <T> The final type of the records emitted by the source.
  * @param <SplitT> The type of the splits processed by the source.
  * @param <SplitStateT> The type of the mutable state per split.
  */
 @PublicEvolving
 public abstract class SingleThreadMultiplexSourceReaderBase<
-                E, T, SplitT extends SourceSplit, SplitStateT>
+        E, T, SplitT extends SourceSplit, SplitStateT>
         extends SourceReaderBase<E, T, SplitT, SplitStateT> {
 
     /**
@@ -116,6 +116,13 @@ public abstract class SingleThreadMultiplexSourceReaderBase<
             RecordEmitter<E, T, SplitStateT> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
+        /**
+         * 如果是 flink-connector-mysql-cdc 也即 MySqlSourceReader 继承该类
+         * elementsQueue                -> FutureCompletingBlockingQueue<RecordsWithSplitIds<SourceRecords>>
+         * splitFetcherManager          -> SingleThreadFetcherManager(MySqlSplitReader)
+         * recordEmitter                -> MySqlRecordEmitter
+         * ...
+         */
         super(elementsQueue, splitFetcherManager, recordEmitter, config, context);
     }
 }

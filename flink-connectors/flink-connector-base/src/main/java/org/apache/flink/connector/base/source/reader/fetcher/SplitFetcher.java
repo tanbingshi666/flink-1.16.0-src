@@ -77,6 +77,8 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
         // SplitFetcher ID
         this.id = id;
         // 阻塞队列 里面维护了具体的切片信息 AddSplitsTask
+        // 也即将申请的切片信息封装成 AddSplitsTask 添加到阻塞队列
+        // 等待 run() 调用
         this.taskQueue = new LinkedBlockingDeque<>();
         // FutureCompletingBlockingQueue
         this.elementsQueue = elementsQueue;
@@ -127,6 +129,10 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
     }
 
     /** Package private method to help unit test. */
+    // 由于这个方法会执行多次 故里面的逻辑有先后顺序
+    // 大概的逻辑是：将 taskQueue 的所有切片信息拉取出来直到 taskQueue 为空
+    // 然后将拉取的所有切片信息缓存到 assignedSplits Map 集合
+    // 最终调用 FetchTask.run()
     void runOnce() {
         try {
             // The fetch task should run if the split assignment is not empty or there is a split
@@ -347,7 +353,8 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
         }
 
         @Override
-        public void wakeUp() {}
+        public void wakeUp() {
+        }
 
         @Override
         public String toString() {

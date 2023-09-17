@@ -115,7 +115,8 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
      * An ID that the coordinator will register self in the coordinator store with. Other
      * coordinators may send events to this coordinator by the ID.
      */
-    @Nullable private final String coordinatorListeningID;
+    @Nullable
+    private final String coordinatorListeningID;
 
     public SourceCoordinator(
             String operatorName,
@@ -209,7 +210,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
             final ClassLoader userCodeClassLoader =
                     context.getCoordinatorContext().getUserCodeClassloader();
             try (TemporaryClassLoaderContext ignored =
-                    TemporaryClassLoaderContext.of(userCodeClassLoader)) {
+                         TemporaryClassLoaderContext.of(userCodeClassLoader)) {
                 enumerator = source.createEnumerator(context);
             } catch (Throwable t) {
                 ExceptionUtils.rethrowIfFatalErrorOrOOM(t);
@@ -423,7 +424,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
         final ClassLoader userCodeClassLoader =
                 context.getCoordinatorContext().getUserCodeClassloader();
         try (TemporaryClassLoaderContext ignored =
-                TemporaryClassLoaderContext.of(userCodeClassLoader)) {
+                     TemporaryClassLoaderContext.of(userCodeClassLoader)) {
             final EnumChkT enumeratorCheckpoint = deserializeCheckpoint(checkpointData);
             enumerator = source.restoreEnumerator(context, enumeratorCheckpoint);
         }
@@ -484,6 +485,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
      * themselves may already be a problem regardless of how the serialization is implemented.
      *
      * @return A byte array containing the serialized state of the source coordinator.
+     *
      * @throws Exception When something goes wrong in serialization.
      */
     private byte[] toBytes(long checkpointId) throws Exception {
@@ -497,7 +499,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
             throws Exception {
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                DataOutputStream out = new DataOutputViewStreamWrapper(baos)) {
+             DataOutputStream out = new DataOutputViewStreamWrapper(baos)) {
 
             writeCoordinatorSerdeVersion(out);
             out.writeInt(enumeratorCheckpointSerializer.getVersion());
@@ -514,11 +516,12 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
      * Restore the state of this source coordinator from the state bytes.
      *
      * @param bytes The checkpoint bytes that was returned from {@link #toBytes(long)}
+     *
      * @throws Exception When the deserialization failed.
      */
     private EnumChkT deserializeCheckpoint(byte[] bytes) throws Exception {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-                DataInputStream in = new DataInputViewStreamWrapper(bais)) {
+             DataInputStream in = new DataInputViewStreamWrapper(bais)) {
             final int coordinatorSerdeVersion = readAndVerifyCoordinatorSerdeVersion(in);
             int enumSerializerVersion = in.readInt();
             int serializedEnumChkptSize = in.readInt();
@@ -582,10 +585,19 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
                 attemptNumber,
                 event.location());
 
+        /**
+         * 判断是否已经注册过
+         */
         final boolean subtaskReaderExisted =
                 context.registeredReadersOfAttempts().containsKey(subtask);
+        /**
+         * 缓存 SourceReader 注册
+         */
         context.registerSourceReader(subtask, attemptNumber, event.location());
         if (!subtaskReaderExisted) {
+            /**
+             * 执行 SplitEnumerator.addReader()
+             */
             enumerator.addReader(event.subtaskId());
         }
     }
@@ -630,7 +642,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
          * Update the {@link Watermark} for the given {@code key)}.
          *
          * @return the new updated combined {@link Watermark} if the value has changed. {@code
-         *     Optional.empty()} otherwise.
+         *         Optional.empty()} otherwise.
          */
         public Optional<Watermark> aggregate(T key, Watermark watermark) {
             watermarks.put(key, watermark);

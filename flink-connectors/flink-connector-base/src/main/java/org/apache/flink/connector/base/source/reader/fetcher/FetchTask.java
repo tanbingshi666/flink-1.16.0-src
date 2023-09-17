@@ -43,10 +43,13 @@ class FetchTask<E, SplitT extends SourceSplit> implements SplitFetcherTask {
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
             Consumer<Collection<String>> splitFinishedCallback,
             int fetcherIndex) {
+        // 如果是 flink-mysql-cdc splitReader = MySqlSplitReader
         this.splitReader = splitReader;
+        // 拉取数据缓存区 FutureCompletingBlockingQueue
         this.elementsQueue = elementsQueue;
         this.splitFinishedCallback = splitFinishedCallback;
         this.lastRecords = null;
+        // SplitFetcher 线程 ID
         this.fetcherIndex = fetcherIndex;
         this.wakeup = false;
     }

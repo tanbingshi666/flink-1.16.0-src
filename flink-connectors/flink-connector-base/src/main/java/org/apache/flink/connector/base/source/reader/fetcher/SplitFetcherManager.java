@@ -165,9 +165,14 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
         // Create SplitReader.
         // 1 获取读取数据切片器 SplitReader
         // 如果是 flink-paimon 返回 FileStoreSourceSplitReader
+        // 如果是 flink-mysql-cdc 返回 MySqlSplitReader
         SplitReader<E, SplitT> splitReader = splitReaderFactory.get();
 
+        /**
+         * 原子整形自增
+         */
         int fetcherId = fetcherIdGenerator.getAndIncrement();
+
         // 2 创建 SplitFetcher 线程
         SplitFetcher<E, SplitT> splitFetcher =
                 new SplitFetcher<>(

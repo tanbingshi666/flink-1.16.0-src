@@ -59,7 +59,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  * </ul>
  *
  * @param <E> The rich element type that contains information for split state update or timestamp
- *     extraction.
+ *         extraction.
  * @param <T> The final element type to emit.
  * @param <SplitT> the immutable split type.
  * @param <SplitStateT> the mutable type of split state.
@@ -93,10 +93,13 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
     protected SourceReaderContext context;
 
     /** The latest fetched batch of records-by-split from the split reader. */
-    @Nullable private RecordsWithSplitIds<E> currentFetch;
+    @Nullable
+    private RecordsWithSplitIds<E> currentFetch;
 
-    @Nullable private SplitContext<T, SplitStateT> currentSplitContext;
-    @Nullable private SourceOutput<T> currentSplitOutput;
+    @Nullable
+    private SplitContext<T, SplitStateT> currentSplitContext;
+    @Nullable
+    private SourceOutput<T> currentSplitOutput;
 
     /** Indicating whether the SourceReader will be assigned more splits or not. */
     private boolean noMoreSplitsAssignment;
@@ -122,7 +125,8 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
     }
 
     @Override
-    public void start() {}
+    public void start() {
+    }
 
     @Override
     public InputStatus pollNext(ReaderOutput<T> output) throws Exception {
@@ -130,7 +134,7 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
         // 1 获取 RecordsWithSplitIds 如果为 null 则获取
         RecordsWithSplitIds<E> recordsWithSplitId = this.currentFetch;
         if (recordsWithSplitId == null) {
-            // 1.1 获取 RecordsWithSplitIds
+            // 1.1 从 FutureCompletingBlockingQueue 获取 RecordsWithSplitIds
             recordsWithSplitId = getNextFetch(output);
             if (recordsWithSplitId == null) {
                 return trace(finishedOrAvailableLater());
@@ -239,13 +243,30 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 
     @Override
     public void addSplits(List<SplitT> splits) {
+        /**
+         * Adding split(s) to reader:
+         * [MySqlSnapshotSplit{
+         * tableId=medical.dict,
+         * splitId='medical.dict:0',
+         * splitKeyType=[`id` BIGINT NOT NULL],
+         * splitStart=null,
+         * splitEnd=null,
+         * highWatermark=null}]
+         */
         LOG.info("Adding split(s) to reader: {}", splits);
+
         // Initialize the state for each split.
+        /**
+         * 初始化每个切片信息状态
+         */
         splits.forEach(
-                s ->
-                        splitStates.put(
-                                s.splitId(), new SplitContext<>(s.splitId(), initializedState(s))));
+                s -> splitStates.put(
+                        s.splitId(), new SplitContext<>(s.splitId(), initializedState(s))));
+
         // Hand over the splits to the split fetcher to start fetch.
+        /**
+         * 将切片信息传递给 SingleThreadFetcherManager
+         */
         splitFetcherManager.addSplits(splits);
     }
 
@@ -279,6 +300,7 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
     }
 
     // -------------------- Abstract method to allow different implementations ------------------
+
     /** Handles the finished splits to clean the state if needed. */
     protected abstract void onSplitFinished(Map<String, SplitStateT> finishedSplitIds);
 
@@ -293,6 +315,7 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
      * Convert a mutable SplitStateT to immutable SplitT.
      *
      * @param splitState splitState.
+     *
      * @return an immutable Split state.
      */
     protected abstract SplitT toSplitType(String splitId, SplitStateT splitState);
